@@ -1,0 +1,13 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Helvetica, sans-serif; }
+.project-page { max-width: 1100px; padding: 24px; margin: 0 auto; }
+#project-metadata h1 { font-size: 28px; font-weight: normal; margin: 0 0 12px; }
+#project-metadata p { margin: 4px 0; font-size: 13px; }
+#project-content { display: grid; gap: 32px; margin-top: 32px; }
+.project-text { max-width: 70ch; margin: 0; white-space: pre-wrap; }
+figure { min-width: 0; margin: 0; }
+figure img { display: block; width: 100%; height: auto; }
+figcaption { margin-top: 8px; font-size: 12px; }
+.project-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+.project-video iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
+@media (max-width: 600px) { .project-gallery { grid-template-columns: 1fr; } }

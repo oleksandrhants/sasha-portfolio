@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Archive — Oleksandr Hants</title>
+  <link rel="stylesheet" href="archive.css">
+  <link rel="stylesheet" href="site-nav.css">
+  <link rel="stylesheet" href="animated-title.css">
+  <script type="module" src="archive-title.js"></script>
+  <script type="module" src="site-nav.js"></script>
+  <script type="module" src="archive.js"></script>
+</head>
+<body class="archive-page">
+  <header data-site-nav></header>
+  <main>
+    <p id="archive-status" role="status">Loading archive…</p>
+    <div id="archive-grid" class="archive-grid" aria-label="Project media"></div>
+  </main>
+  <dialog id="lightbox" class="lightbox" aria-label="Image viewer">
+    <button id="lightbox-close" class="lightbox-close" type="button" autofocus aria-label="Close image viewer">Close ×</button>
+    <div id="lightbox-content" class="lightbox-content">
+      <img id="lightbox-image" class="lightbox-image" alt="">
+      <div id="lightbox-info" class="lightbox-info">
+        <div class="lightbox-details">
+          <p id="lightbox-project-meta" class="lightbox-project-meta"></p>
+          <p id="lightbox-description" class="lightbox-description" hidden></p>
+        </div>
+        <a id="lightbox-project" class="project-link">VIEW PROJECT →</a>
+      </div>
+    </div>
+  </dialog>
+</body>
+</html>

@@ -1,0 +1,83 @@
+{
+  "projects": [
+    {
+      "id": "prototype-project",
+      "title": "Prototype Project",
+      "year": "2026",
+      "projectTypes": [
+        "installation",
+        "photography"
+      ],
+      "roles": [
+        "artist"
+      ],
+      "content": [
+        {
+          "type": "text",
+          "text": "Temporary project content for testing the portfolio structure."
+        },
+        {
+          "type": "image",
+          "src": "assets/images/10.webp",
+          "showInBush": true,
+          "showInArchive": true,
+          "description": "",
+          "credit": ""
+        },
+        {
+          "type": "gallery",
+          "items": [
+            {
+              "type": "image",
+              "src": "assets/images/G3D_2.webp",
+              "showInBush": true,
+              "showInArchive": true,
+              "description": "",
+              "credit": ""
+            },
+            {
+              "type": "image",
+              "src": "assets/images/gr_1.webp",
+              "showInBush": false,
+              "showInArchive": true,
+              "description": "",
+              "credit": ""
+            }
+          ]
+        },
+        {
+          "type": "image",
+          "src": "assets/images/gr_233.webp",
+          "showInBush": true,
+          "showInArchive": true,
+          "description": "",
+          "credit": ""
+        },
+        {
+          "type": "image",
+          "src": "assets/images/gr8_cc.webp",
+          "showInBush": false,
+          "showInArchive": true,
+          "description": "",
+          "credit": ""
+        },
+        {
+          "type": "image",
+          "src": "assets/images/st2.webp",
+          "showInBush": true,
+          "showInArchive": true,
+          "description": "",
+          "credit": ""
+        },
+        {
+          "type": "image",
+          "src": "assets/images/ZGrab02.webp",
+          "showInBush": false,
+          "showInArchive": true,
+          "description": "",
+          "credit": ""
+        }
+      ]
+    }
+  ]
+}

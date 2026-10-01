@@ -1,0 +1,29 @@
+[data-site-nav] { position: relative; z-index: 3; padding: 24px; font: 13px/1.5 Arial, Helvetica, sans-serif; color: #252525; }
+.site-nav { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; width: fit-content; max-width: calc(100vw - 100px); }
+.site-nav a, .site-archive-link { color: inherit; text-decoration: none; }
+.site-name { font-size: 26px; letter-spacing: -0.02em; margin-bottom: 12px; }
+.site-nav summary { cursor: pointer; }
+.project-links { list-style: none; padding: 4px 0 4px 14px; margin: 0; max-height: 45vh; overflow: auto; }
+.project-links li { margin: 4px 0; }
+.site-nav [aria-disabled] { opacity: 0.55; cursor: default; }
+.site-archive-link { position: absolute; right: 24px; top: 24px; }
+.site-nav a:hover, .site-archive-link:hover { text-decoration: underline; }
+.site-nav a:focus-visible, .site-nav summary:focus-visible, .site-archive-link:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+.home-page [data-site-nav] { position: fixed; inset: 0; padding: 0; pointer-events: none; }
+.home-page .site-nav { position: absolute; left: var(--title-nav-left, 24px); top: var(--title-nav-top, 68px); }
+.home-page .site-nav, .home-page .site-archive-link { pointer-events: auto; }
+/* The home page already has its own animated, configurable SVG identity. */
+.home-page .site-name { display: none; }
+.home-page .home-utility-nav { position: absolute; right: 24px; top: 24px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; pointer-events: auto; }
+.home-page .home-utility-nav .site-archive-link { position: static; }
+.home-page .home-utility-nav a { color: inherit; text-decoration: none; }
+.home-page .home-utility-nav a:hover { text-decoration: underline; }
+.home-page .home-utility-nav [aria-disabled] { opacity: 0.55; cursor: default; }
+
+/* Archive uses two compact fixed groups, with no full-width hit area or bar. */
+.archive-page [data-site-nav] { position: fixed; inset: 0; padding: 0; pointer-events: none; z-index: 4; }
+.archive-page .site-nav { position: absolute; left: var(--title-nav-left, 24px); top: var(--title-nav-top, 68px); pointer-events: auto; }
+.archive-page .site-name { display: none; }
+.archive-utility-nav { position: absolute; right: 24px; top: 24px; display: flex; flex-direction: column; gap: 4px; pointer-events: auto; }
+.archive-utility-nav a { color: inherit; text-decoration: none; }
+.archive-utility-nav [aria-disabled] { opacity: 0.55; cursor: default; }
