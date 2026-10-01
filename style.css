@@ -1,0 +1,71 @@
+body {
+  margin: 0;
+  overflow: hidden;
+  min-height: 100vh;
+  background: radial-gradient(ellipse at 50% 35%, #f2f2f2 0%, #e6e6e6 100%);
+}
+
+canvas {
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+
+canvas.dragging {
+  cursor: grabbing;
+}
+
+.debug-panel {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(290px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 14px;
+  border: 1px solid #ffffff30;
+  border-radius: 8px;
+  background: #202020ed;
+  color: #eee;
+  font: 12px/1.5 system-ui, sans-serif;
+  color-scheme: dark;
+}
+
+.debug-panel[hidden] { display: none; }
+.debug-panel p { color: #bbb; margin: 6px 0 12px; }
+.debug-panel fieldset { border: 0; border-top: 1px solid #ffffff25; padding: 8px 0; margin: 0; }
+.debug-panel legend { padding: 0 6px 0 0; font-size: 10px; letter-spacing: 0.08em; color: #bbb; }
+.debug-panel label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 5px 0; }
+.debug-panel input { box-sizing: border-box; width: 82px; padding: 3px 5px; border: 1px solid #666; border-radius: 3px; background: #303030; color: #fff; font: inherit; }
+.debug-panel input:focus-visible { outline: 2px solid #aaa; outline-offset: 1px; }
+.debug-panel button { margin: 4px 6px 4px 0; padding: 5px 8px; border: 1px solid #666; border-radius: 3px; background: #303030; color: #eee; font: inherit; cursor: pointer; }
+.debug-panel button:focus-visible { outline: 2px solid #aaa; outline-offset: 1px; }
+.debug-panel .debug-status { min-height: 1.5em; margin: 4px 0 0; font-size: 11px; }
+.debug-copy-buffer { position: fixed; left: -10000px; top: 0; }
+
+.edge-blur-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+}
+.edge-blur-overlay[hidden] { display: none; }
+.debug-panel label[hidden] { display: none; }
+.debug-panel select { max-width: 155px; padding: 3px; background: #303030; color: #fff; border: 1px solid #666; border-radius: 3px; font: inherit; }
+.debug-panel input[type=checkbox] { width: 16px; height: 16px; }
+.debug-panel input[type=color] { height: 27px; padding: 2px; cursor: pointer; }
+.debug-panel input[type=text] { width: 165px; min-width: 0; }
+
+.title-overlay {
+  position: fixed;
+  z-index: 2;
+  pointer-events: none;
+  user-select: none;
+  overflow: visible;
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.02em;
+}
