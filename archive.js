@@ -12,6 +12,11 @@ const ARCHIVE_CONFIG = {
     maxVerticalOverlap: 0.20, // Maximum row overlap as a fraction of the smaller row height.
     verticalJitter: 45, // Maximum vertical offset within a desktop row, in pixels.
     minRowSpacing: 12, // Smallest positive separation between rows in pixels.
+    hoverScale: 1.06,
+    hoverInDurationMs: 500,
+    hoverOutDurationMs: 500,
+    hoverInEasePower: 3, // Higher moves faster initially and slows more near the target.
+    hoverOutEasePower: 3, // Ease-out also applies when returning to normal size.
     maxRowSpacing: 60 // Largest positive separation between rows in pixels.
 };
 const ARCHIVE_DEFAULTS = Object.freeze({ ...ARCHIVE_CONFIG });
@@ -27,7 +32,12 @@ const ARCHIVE_CONTROLS = [
     ["maxVerticalOverlap", "Maximum Vertical Overlap", 0, 0.3, 0.01],
     ["verticalJitter", "Vertical Jitter", 0, 100, 1],
     ["minRowSpacing", "Minimum Row Spacing", 0, 120, 1],
-    ["maxRowSpacing", "Maximum Row Spacing", 0, 200, 1]
+    ["maxRowSpacing", "Maximum Row Spacing", 0, 200, 1],
+    ["hoverScale", "Hover Scale", 1, 2, 0.01],
+    ["hoverInDurationMs", "Hover In Duration (ms)", 0, 5000, 1],
+    ["hoverOutDurationMs", "Hover Out Duration (ms)", 0, 5000, 1],
+    ["hoverInEasePower", "Hover In Ease Power", 1, 10, 0.1],
+    ["hoverOutEasePower", "Hover Out Ease Power", 1, 10, 0.1]
 ];
 function normalizeArchiveBounds()
 {
@@ -69,7 +79,7 @@ let layoutFrame = 0;
 
 function applyArchiveLayout()
 {
-    clearMetadataHover();
+    clearArchiveHover();
     const width = grid.clientWidth;
     lastLayoutWidth = width;
     const layout = calculateArchiveLayout(layoutItems, width, ARCHIVE_CONFIG, layoutSeed);
@@ -102,39 +112,74 @@ window.addEventListener("resize", () =>
     });
 });
 
-function clearMetadataHover()
+const hoverAnimations = new WeakMap();
+let hoveredItem = null;
+
+function sampleHoverScale(motion, time)
 {
-    grid.querySelectorAll(".is-hovered").forEach(item => item.classList.remove("is-hovered"));
+    const t = motion.duration > 0 ? Math.min(1, Math.max(0, (time - motion.start) / motion.duration)) : 1;
+    return motion.from + (motion.to - motion.from) * (1 - Math.pow(1 - t, motion.power));
 }
 
-// Only real pointer movement can reveal metadata; restored keyboard focus cannot.
-grid.addEventListener("pointermove", event =>
+function animateHoverScale(item, entering)
 {
-    clearMetadataHover();
-    if (lightbox.open || event.pointerType === "touch") return;
-    event.target.closest(".archive-item")?.classList.add("is-hovered");
-});
-grid.addEventListener("pointerleave", clearMetadataHover);
-window.addEventListener("blur", clearMetadataHover);
-window.addEventListener("scroll", clearMetadataHover, true);
+    const now = performance.now();
+    const previous = hoverAnimations.get(item);
+    // Sample at event time so reversals also work between rendered frames.
+    const from = previous ? sampleHoverScale(previous, now) : 1;
+    if (previous) cancelAnimationFrame(previous.frame);
+    const motion = {
+        from,
+        to: entering ? ARCHIVE_CONFIG.hoverScale : 1,
+        start: now,
+        duration: entering ? ARCHIVE_CONFIG.hoverInDurationMs : ARCHIVE_CONFIG.hoverOutDurationMs,
+        power: entering ? ARCHIVE_CONFIG.hoverInEasePower : ARCHIVE_CONFIG.hoverOutEasePower,
+        frame: 0
+    };
+    hoverAnimations.set(item, motion);
+    const update = time =>
+    {
+        item.style.transform = `scale(${sampleHoverScale(motion, time)})`;
+        if (time - motion.start < motion.duration) motion.frame = requestAnimationFrame(update);
+    };
+    update(now);
+}
+
+function setHoveredItem(item)
+{
+    if (item === hoveredItem) return;
+    if (hoveredItem)
+    {
+        hoveredItem.classList.remove("is-hovered");
+        animateHoverScale(hoveredItem, false);
+    }
+    hoveredItem = item;
+    if (hoveredItem)
+    {
+        hoveredItem.classList.add("is-hovered");
+        animateHoverScale(hoveredItem, true);
+    }
+}
+
+function clearArchiveHover()
+{
+    setHoveredItem(null);
+}
+
+// Pointer interaction controls hover scaling and stacking.
+function updatePointerHover(event)
+{
+    setHoveredItem(lightbox.open || event.pointerType === "touch" ? null : event.target.closest(".archive-item"));
+}
+grid.addEventListener("pointerover", updatePointerHover);
+grid.addEventListener("pointermove", updatePointerHover);
+grid.addEventListener("pointerleave", clearArchiveHover);
+window.addEventListener("blur", clearArchiveHover);
+window.addEventListener("scroll", clearArchiveHover, true);
 
 function mediaLabel({ project, media })
 {
     return media.title || media.caption || project.title || "Untitled project";
-}
-
-function createMetadata({ project, media })
-{
-    const caption = document.createElement("figcaption");
-    caption.className = "media-metadata";
-    const types = Array.isArray(project.projectTypes) ? project.projectTypes.join(" / ") : "";
-    for (const value of [project.title, media.year ?? project.year, types])
-    {
-        const line = document.createElement("span");
-        line.textContent = value ?? "";
-        caption.appendChild(line);
-    }
-    return caption;
 }
 
 function createImageMedia(entry)
@@ -182,7 +227,7 @@ async function renderArchive(entries)
         const figure = document.createElement("figure");
         figure.className = "archive-item";
         figure.dataset.projectId = entry.project.id;
-        figure.append(content, createMetadata(entry));
+        figure.append(content);
         const item = { figure, ratio: 16 / 9 };
         layoutItems.push(item);
         const image = content.querySelector("img");
@@ -245,7 +290,7 @@ function fitLightboxImage()
 function openLightbox(entry, trigger)
 {
     selectedEntry = entry;
-    clearMetadataHover();
+    clearArchiveHover();
     renderLightboxInfo(entry);
     lightboxTrigger = trigger;
     lightboxImage.style.width = "";
@@ -269,7 +314,7 @@ lightbox.addEventListener("click", event =>
 lightbox.addEventListener("close", () =>
 {
     document.body.classList.remove("lightbox-open");
-    clearMetadataHover();
+    clearArchiveHover();
     lightboxImage.removeAttribute("src");
     selectedEntry = null;
     lightboxTrigger?.focus();
@@ -320,7 +365,11 @@ function createArchivePanel()
             ARCHIVE_CONFIG[key] = value;
             normalizeArchiveBounds();
             refresh();
-            regenerateArchiveLayout();
+            if (key.startsWith("hover"))
+            {
+                if (hoveredItem) animateHoverScale(hoveredItem, true);
+            }
+            else regenerateArchiveLayout();
             try
             {
                 localStorage.setItem(ARCHIVE_STORAGE_KEY, JSON.stringify(ARCHIVE_CONFIG));

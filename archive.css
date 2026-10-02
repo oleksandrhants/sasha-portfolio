@@ -37,21 +37,6 @@ body {
   cursor: zoom-in;
 }
 .media-button img { display: block; width: 100%; height: auto; }
-.media-metadata {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 5px 6px;
-  background: rgb(245 245 243 / 94%);
-  font-size: 7.8px;
-  line-height: 1.5;
-  text-transform: uppercase;
-  opacity: 0;
-  pointer-events: none;
-}
-.media-metadata span { display: block; }
-.archive-item.is-hovered .media-metadata { opacity: 1; }
 .media-button:focus-visible, a:focus-visible, .lightbox-close:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 3px;
