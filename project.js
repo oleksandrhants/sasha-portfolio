@@ -1,4 +1,4 @@
-import { loadProjects } from "./project-data.js";
+import { loadProjects, normalizedProjectAuthor } from "./project-data.js";
 
 const status = document.querySelector("#project-status");
 const metadata = document.querySelector("#project-metadata");
@@ -67,9 +67,25 @@ const blockRenderers = {
 function renderProject(project)
 {
     document.title = `${project.title} — Oleksandr Hants`;
-    const heading = document.createElement("h1");
-    heading.textContent = project.title;
-    metadata.replaceChildren(heading);
+    metadata.replaceChildren();
+    const author = normalizedProjectAuthor(project);
+    if (author)
+    {
+        const authorHeading = document.createElement("h1");
+        authorHeading.className = "project-author";
+        authorHeading.textContent = author.name;
+        const titleHeading = document.createElement("h2");
+        titleHeading.className = "project-title";
+        titleHeading.textContent = project.title;
+        metadata.append(authorHeading, titleHeading);
+    }
+    else
+    {
+        const titleHeading = document.createElement("h1");
+        titleHeading.className = "project-title";
+        titleHeading.textContent = project.title;
+        metadata.appendChild(titleHeading);
+    }
     for (const [label, value] of [
         ["Year", project.year],
         ["Project types", Array.isArray(project.projectTypes) ? project.projectTypes.join(" / ") : ""],

@@ -1,7 +1,8 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Helvetica, sans-serif; }
 .project-page { max-width: 1100px; padding: 24px; margin: 0 auto; }
-#project-metadata h1 { font-size: 28px; font-weight: normal; margin: 0 0 12px; }
+#project-metadata .project-author { font-size: 18px; font-weight: normal; margin: 0 0 4px; text-transform: none; }
+#project-metadata .project-title { font-size: 28px; line-height: 1.2; font-weight: normal; margin: 0 0 12px; text-transform: none; }
 #project-metadata p { margin: 4px 0; font-size: 13px; }
 #project-content { display: grid; gap: 32px; margin-top: 32px; }
 .project-text { max-width: 70ch; margin: 0; white-space: pre-wrap; }

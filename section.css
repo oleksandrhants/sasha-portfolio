@@ -1,0 +1,5 @@
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Helvetica, sans-serif; }
+.section-page { max-width: 1100px; padding: 24px; margin: 0 auto; }
+.section-page h1 { margin: 0; font-size: 28px; font-weight: normal; }
+.section-content { min-height: 1px; margin-top: 32px; }

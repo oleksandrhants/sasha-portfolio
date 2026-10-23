@@ -1,4 +1,4 @@
-import { loadProjects, projectUrl, collectArchiveMedia } from "./project-data.js";
+import { collectArchiveMedia, loadProjects, normalizedProjectAuthor, projectUrl } from "./project-data.js";
 import { calculateArchiveLayout } from "./archive-layout.js";
 
 const ARCHIVE_CONFIG = {
@@ -253,7 +253,8 @@ async function renderArchive(entries)
 // including gallery items, never to the project's text content blocks.
 function renderLightboxInfo({ project, media })
 {
-    lightboxProjectMeta.textContent = [project.title, project.year]
+    const author = normalizedProjectAuthor(project);
+    lightboxProjectMeta.textContent = [author?.name, project.title, project.year]
         .filter(value => value !== undefined && value !== null && value !== "").join(" · ");
     const description = typeof media.description === "string" ? media.description.trim() : "";
     lightboxDescription.textContent = description;
