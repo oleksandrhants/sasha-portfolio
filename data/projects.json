@@ -1,4 +1,5 @@
 {
+  "schemaVersion": 1,
   "projects": [
     {
       "id": "prototype-project",
@@ -13,10 +14,12 @@
       ],
       "content": [
         {
+          "id": "prototype-project-text-1",
           "type": "text",
           "text": "Temporary project content for testing the portfolio structure."
         },
         {
+          "id": "prototype-project-image-1",
           "type": "image",
           "src": "assets/images/10.webp",
           "showInBush": true,
@@ -25,9 +28,11 @@
           "credit": ""
         },
         {
+          "id": "prototype-project-gallery-1",
           "type": "gallery",
           "items": [
             {
+              "id": "prototype-project-gallery-1-image-1",
               "type": "image",
               "src": "assets/images/G3D_2.webp",
               "showInBush": true,
@@ -36,6 +41,7 @@
               "credit": ""
             },
             {
+              "id": "prototype-project-gallery-1-image-2",
               "type": "image",
               "src": "assets/images/gr_1.webp",
               "showInBush": false,
@@ -46,6 +52,7 @@
           ]
         },
         {
+          "id": "prototype-project-image-2",
           "type": "image",
           "src": "assets/images/gr_233.webp",
           "showInBush": true,
@@ -54,6 +61,7 @@
           "credit": ""
         },
         {
+          "id": "prototype-project-image-3",
           "type": "image",
           "src": "assets/images/gr8_cc.webp",
           "showInBush": false,
@@ -62,6 +70,7 @@
           "credit": ""
         },
         {
+          "id": "prototype-project-image-4",
           "type": "image",
           "src": "assets/images/st2.webp",
           "showInBush": true,
@@ -70,6 +79,7 @@
           "credit": ""
         },
         {
+          "id": "prototype-project-image-5",
           "type": "image",
           "src": "assets/images/ZGrab02.webp",
           "showInBush": false,

@@ -9,6 +9,29 @@ body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Hel
 figure { min-width: 0; margin: 0; }
 figure img { display: block; width: 100%; height: auto; }
 figcaption { margin-top: 8px; font-size: 12px; }
-.project-gallery { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+.project-gallery, .project-image-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 16px; }
+.project-image-zoom { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; cursor: zoom-in; }
+.project-image-zoom:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
 .project-video iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
-@media (max-width: 600px) { .project-gallery { grid-template-columns: 1fr; } }
+.project-list-block { max-width: 70ch; }
+.project-list-block h3 { margin: 0 0 12px; font-size: 15px; font-weight: normal; }
+.project-list-block ul { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.project-list-block li > p, .project-list-block li div > p { margin: 2px 0 0; font-size: 13px; opacity: 0.75; }
+.project-list-block a { color: inherit; text-underline-offset: 2px; }
+.project-exhibitions li { display: grid; grid-template-columns: minmax(4.5em, auto) 1fr; gap: 16px; }
+.project-exhibitions time { font-size: 13px; }
+.project-spacer { min-height: 1px; }
+.project-spacer-small { height: 16px; }
+.project-spacer-medium { height: 40px; }
+.project-spacer-large { height: 80px; }
+.project-lightbox { width: 100vw; max-width: none; height: 100dvh; max-height: none; padding: 48px; border: 0; background: #eeeeec; color: #252525; }
+.project-lightbox[open] { display: grid; place-items: center; grid-template-rows: minmax(0, 1fr) auto; gap: 12px; }
+.project-lightbox::backdrop { background: rgba(0, 0, 0, 0.72); }
+.project-lightbox-image { display: block; max-width: 100%; max-height: calc(100dvh - 120px); width: auto; height: auto; }
+.project-lightbox-close { position: fixed; top: 16px; right: 20px; padding: 4px 8px; border: 0; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.project-lightbox-caption { margin: 0; font-size: 12px; }
+@media (max-width: 600px) {
+  .project-gallery, .project-image-pair { grid-template-columns: 1fr; }
+  .project-exhibitions li { grid-template-columns: 1fr; gap: 2px; }
+  .project-lightbox { padding: 48px 16px 16px; }
+}

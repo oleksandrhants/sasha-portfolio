@@ -3,6 +3,24 @@ let projectsRequest;
 export const COLLECTIVE_NAME = "fantastic little splash";
 export const SOLO_AUTHOR_NAME = "Oleksandr Hants";
 
+// Media files may provide purpose-specific variants. The legacy `src` field
+// remains a valid fallback so older project data keeps rendering unchanged.
+export function mediaSource(media, purpose = "large")
+{
+    if (!media || typeof media !== "object") return "";
+    const priorities = {
+        preview: ["preview", "src", "large", "zoom"],
+        large: ["large", "src", "preview", "zoom"],
+        zoom: ["zoom", "large", "src", "preview"]
+    };
+    for (const key of priorities[purpose] || priorities.large)
+    {
+        const value = media[key];
+        if (typeof value === "string" && value.trim()) return value.trim();
+    }
+    return "";
+}
+
 export function normalizedProjectAuthor(project)
 {
     const author = project?.author;
@@ -59,9 +77,31 @@ export function loadProjects()
         if (!response.ok) throw new Error(`Project data returned HTTP ${response.status}`);
         const data = await response.json();
         if (!Array.isArray(data.projects)) throw new Error("Expected a projects array.");
-        return data.projects.filter(project => project && typeof project.id === "string");
+        const projects = data.projects.filter(project => project && typeof project.id === "string");
+        const idIssues = projectBlockIdIssues(projects);
+        if (idIssues.length) console.warn("Project block ID issues:", idIssues);
+        return projects;
     });
     return projectsRequest;
+}
+
+// New data should give every content block a unique, persistent ID. Missing
+// IDs are reported instead of rejected so pre-block-system JSON remains valid.
+export function projectBlockIdIssues(projects)
+{
+    const issues = [];
+    for (const project of Array.isArray(projects) ? projects : [])
+    {
+        const seen = new Set();
+        for (const [index, block] of (Array.isArray(project.content) ? project.content : []).entries())
+        {
+            const id = typeof block?.id === "string" ? block.id.trim() : "";
+            if (!id) issues.push(`${project.id}: content[${index}] has no block ID`);
+            else if (seen.has(id)) issues.push(`${project.id}: duplicate block ID "${id}"`);
+            else seen.add(id);
+        }
+    }
+    return issues;
 }
 
 export function projectUrl(id)
@@ -77,13 +117,15 @@ export function collectArchiveMedia(projects)
         for (const block of Array.isArray(project.content) ? project.content : [])
         {
             if (!block) continue;
-            if (block.type === "gallery")
+            if (["gallery", "imagePair", "image-pair"].includes(block.type))
             {
                 for (const media of Array.isArray(block.items) ? block.items : [])
                     if (media?.showInArchive === true) entries.push({ project, type: "image", media });
             }
-            else if (["image", "youtube"].includes(block.type) && block.showInArchive === true)
-                entries.push({ project, type: block.type, media: block });
+            else if (block.type === "image" && block.showInArchive === true)
+                entries.push({ project, type: "image", media: block });
+            else if (["video", "youtube", "vimeo"].includes(block.type) && block.showInArchive === true)
+                entries.push({ project, type: "video", media: block });
         }
     }
     return entries;

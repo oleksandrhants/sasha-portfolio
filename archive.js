@@ -1,4 +1,4 @@
-import { collectArchiveMedia, loadProjects, normalizedProjectAuthor, projectUrl } from "./project-data.js";
+import { collectArchiveMedia, loadProjects, mediaSource, normalizedProjectAuthor, projectUrl } from "./project-data.js";
 import { calculateArchiveLayout } from "./archive-layout.js";
 
 const ARCHIVE_CONFIG = {
@@ -184,13 +184,14 @@ function mediaLabel({ project, media })
 
 function createImageMedia(entry)
 {
-    if (typeof entry.media.src !== "string" || !entry.media.src) return null;
+    const source = mediaSource(entry.media, "preview");
+    if (!source) return null;
     const button = document.createElement("button");
     button.type = "button";
     button.className = "media-button";
     button.setAttribute("aria-label", `Open image: ${mediaLabel(entry)}`);
     const image = document.createElement("img");
-    image.src = entry.media.src;
+    image.src = source;
     image.alt = mediaLabel(entry);
     // Resolve intrinsic sizes before positioning this composition.
     image.loading = "eager";
@@ -200,10 +201,9 @@ function createImageMedia(entry)
     return button;
 }
 
-function createYouTubeMedia(entry)
+function createVideoMedia(entry)
 {
     // Future embed/thumbnail implementation belongs here. No iframe is loaded yet.
-    if (typeof entry.media.youtubeId !== "string" || !entry.media.youtubeId) return null;
     const placeholder = document.createElement("div");
     placeholder.className = "youtube-placeholder";
     placeholder.tabIndex = 0;
@@ -211,7 +211,7 @@ function createYouTubeMedia(entry)
     return placeholder;
 }
 
-const mediaRenderers = { image: createImageMedia, youtube: createYouTubeMedia };
+const mediaRenderers = { image: createImageMedia, video: createVideoMedia };
 
 async function renderArchive(entries)
 {
@@ -298,7 +298,7 @@ function openLightbox(entry, trigger)
     lightboxImage.style.height = "";
     lightboxContent.style.width = "";
     lightboxImage.alt = mediaLabel(entry);
-    lightboxImage.src = entry.media.src;
+    lightboxImage.src = mediaSource(entry.media, "zoom");
     lightbox.showModal();
     document.body.classList.add("lightbox-open");
     if (lightboxImage.complete) fitLightboxImage();
