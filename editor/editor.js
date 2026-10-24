@@ -1,3 +1,5 @@
+import { populateRichTextEditor, richTextFromElement, richTextToPlain, safeRichTextUrl } from '../rich-text.js';
+
 const $ = selector => document.querySelector(selector);
 const clone = value => structuredClone(value);
 const uid = () => crypto.randomUUID();
@@ -93,6 +95,33 @@ function imageFields(parent, image) {
     field(parent, image, 'showInArchive', 'Показывать в архиве', { check:true });
     const note = document.createElement('p'); note.className = 'hint'; note.textContent = 'Подготовьте версии в Portfolio Image Converter и поместите их в assets. Кнопка обновления списка находится в данных проекта.'; parent.append(note);
 }
+function richTextField(parent, block) {
+    const wrap = document.createElement('div'); wrap.className = 'rich-text-field';
+    const label = document.createElement('span'); label.className = 'rich-text-label'; label.textContent = 'Текст';
+    const toolbar = document.createElement('div'); toolbar.className = 'rich-text-toolbar'; toolbar.setAttribute('role','toolbar'); toolbar.setAttribute('aria-label','Форматирование текста');
+    const editor = document.createElement('div'); editor.className = 'rich-text-editor'; editor.contentEditable = 'true'; editor.spellcheck = true; editor.setAttribute('role','textbox'); editor.setAttribute('aria-multiline','true');
+    populateRichTextEditor(editor, block.richText, block.text);
+    let savedRange = null;
+    const remember = () => { const selection = getSelection(); if (selection?.rangeCount && editor.contains(selection.anchorNode)) savedRange = selection.getRangeAt(0).cloneRange(); };
+    const restore = () => { if (!savedRange) return; const selection = getSelection(); selection.removeAllRanges(); selection.addRange(savedRange); editor.focus(); };
+    const sync = () => { block.richText = richTextFromElement(editor); block.text = richTextToPlain(block.richText); remember(); changed(); };
+    const command = (name, value) => { restore(); document.execCommand(name, false, value); sync(); };
+    const tool = (title, labelText, name) => { const control = button(labelText, () => command(name), toolbar); control.title = title; control.setAttribute('aria-label',title); control.addEventListener('mousedown', event => { event.preventDefault(); remember(); }); return control; };
+    tool('Bold · Жирный','B','bold').classList.add('rich-bold');
+    tool('Italic · Курсив','I','italic').classList.add('rich-italic');
+    tool('Underline · Подчёркивание','U','underline').classList.add('rich-underline');
+    tool('Strikethrough · Зачёркивание','S','strikeThrough').classList.add('rich-strike');
+    const link = button('Link', () => { restore(); const selection = getSelection(); const anchor = selection?.anchorNode?.parentElement?.closest?.('a'); const value = prompt('Ссылка (оставьте пустой, чтобы удалить):', anchor?.href || 'https://'); if (value === null) return; const safe = safeRichTextUrl(value); if (!value.trim()) command('unlink'); else if (safe) command('createLink',safe); else alert('Разрешены только http, https и mailto ссылки.'); }, toolbar);
+    link.addEventListener('mousedown', event => { event.preventDefault(); remember(); });
+    const colorTool = (title, commandName, initial) => { const control = document.createElement('input'); control.type = 'color'; control.value = initial; control.title = title; control.setAttribute('aria-label',title); control.addEventListener('pointerdown',remember); control.addEventListener('input',() => command(commandName,control.value)); toolbar.append(control); };
+    colorTool('Text color · Цвет текста','foreColor','#252525');
+    colorTool('Highlight · Цвет фона','hiliteColor','#fff59d');
+    const clear = button('Clear', () => { command('removeFormat'); command('unlink'); }, toolbar); clear.title = 'Clear formatting · Очистить форматирование'; clear.addEventListener('mousedown', event => { event.preventDefault(); remember(); });
+    editor.addEventListener('input',sync);
+    editor.addEventListener('keyup',remember); editor.addEventListener('mouseup',remember); editor.addEventListener('focus',remember);
+    editor.addEventListener('paste', event => { event.preventDefault(); document.execCommand('insertText',false,event.clipboardData.getData('text/plain')); });
+    wrap.append(label,toolbar,editor); parent.append(wrap);
+}
 function itemsForm(parent, block, kind) {
     block.items ??= [];
     const list = document.createElement('div'); parent.append(list);
@@ -126,7 +155,7 @@ function renderBlocks() {
         button('↓', () => move(index,1), actions).disabled = index === draft.content.length-1;
         button('Копия', () => { const copy = clone(block); renewIds(copy); copy.id = uid(); draft.content.splice(index+1,0,copy); renderBlocks(); changed(); }, actions);
         button('Удалить', () => { if (confirm('Удалить блок? Изображения на диске будут сохранены.')) { draft.content.splice(index,1); renderBlocks(); changed(); } }, actions);
-        if (block.type === 'text') { const language = field(card, block, 'language','Язык', { choices:[['','Не указан'],['en','English'],['uk','Ukrainian']] }); language.value = block.language || block.lang || ''; language.addEventListener('input', () => { delete block.lang; changed(); }); field(card,block,'text','Текст',{multiline:true}); }
+        if (block.type === 'text') { const language = field(card, block, 'language','Язык', { choices:[['','Не указан'],['en','English'],['uk','Ukrainian']] }); language.value = block.language || block.lang || ''; language.addEventListener('input', () => { delete block.lang; changed(); }); richTextField(card,block); }
         else if (block.type === 'image') imageFields(card,block);
         else if (['gallery','imagePair','image-pair'].includes(block.type)) {
             if (block.type === 'gallery') {

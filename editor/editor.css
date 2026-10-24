@@ -11,6 +11,19 @@
 .workspace.preview-fullscreen .preview-fullscreen-button { background: #283f36; color: #fff; border-color: #283f36; }
 
 .field-help { margin: -7px 0 12px; color: #68685d; font-size: 11px; line-height: 1.4; }
+.rich-text-field { display: grid; gap: 5px; margin: 8px 0; }
+.rich-text-label { font-size: 12px; }
+.rich-text-toolbar { display: flex; flex-wrap: wrap; gap: 4px; padding: 5px; border: 1px solid #bbb; border-bottom: 0; background: #eee; }
+.rich-text-toolbar button { min-width: 30px; padding: 4px 7px; }
+.rich-text-toolbar input[type="color"] { width: 34px; height: 29px; padding: 2px; border: 1px solid #aaa; background: #fff; }
+.rich-bold { font-weight: bold; }
+.rich-italic { font-style: italic; }
+.rich-underline { text-decoration: underline; }
+.rich-strike { text-decoration: line-through; }
+.rich-text-editor { min-height: 130px; padding: 9px; border: 1px solid #aaa; background: #fff; font: 13px/1.45 Arial, sans-serif; white-space: pre-wrap; overflow-wrap: anywhere; }
+.rich-text-editor:focus { outline: 2px solid #222; outline-offset: -1px; }
+.rich-text-editor p { margin: 0 0 .8em; }
+.rich-text-editor p:last-child { margin-bottom: 0; }
 .multi-value-field { position: relative; margin-bottom: 14px; }
 .multi-value-label { display: block; margin-bottom: 5px; font-size: 12px; }
 .multi-value-control { padding: 6px; border: 1px solid #c8c8c0; border-radius: 4px; background: #fff; }

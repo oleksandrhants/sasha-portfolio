@@ -6,6 +6,22 @@ const { randomBytes, createHash } = require('node:crypto');
 const revision = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const types = new Set(['text','image','imagePair','image-pair','gallery','video','youtube','vimeo','links','materials','exhibitions','spacer']);
+const richUrlProtocols = new Set(['http:','https:','mailto:']);
+
+function validateRichText(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1 || !Array.isArray(value.paragraphs) || value.paragraphs.length > 500) throw fail('Некорректный формат rich text.');
+    for (const paragraph of value.paragraphs) {
+        if (!paragraph || typeof paragraph !== 'object' || !Array.isArray(paragraph.runs) || paragraph.runs.length > 5000) throw fail('Некорректный абзац rich text.');
+        for (const run of paragraph.runs) {
+            if (!run || typeof run !== 'object' || typeof run.text !== 'string' || run.text.length > 100000) throw fail('Некорректный фрагмент rich text.');
+            const allowed = new Set(['text','bold','italic','underline','strike','href','color','highlight']);
+            if (Object.keys(run).some(key => !allowed.has(key))) throw fail('Rich text содержит неподдерживаемое форматирование.');
+            for (const mark of ['bold','italic','underline','strike']) if (run[mark] !== undefined && typeof run[mark] !== 'boolean') throw fail('Некорректная отметка rich text.');
+            for (const color of ['color','highlight']) if (run[color] !== undefined && (typeof run[color] !== 'string' || !/^(?:#[0-9a-f]{3,8}|rgba?\([\d\s.,%]+\)|hsla?\([\d\s.,%deg]+\)|[a-z]{1,24})$/i.test(run[color]))) throw fail('Некорректный цвет rich text.');
+            if (run.href !== undefined) { let url; try { url = new URL(run.href); } catch { throw fail('Некорректная ссылка rich text.'); } if (!richUrlProtocols.has(url.protocol)) throw fail('Недопустимая ссылка rich text.'); }
+        }
+    }
+}
 
 function validateProject(project) {
     if (!project || typeof project !== 'object' || Array.isArray(project)) throw fail('Некорректный проект.');
@@ -31,6 +47,7 @@ function validateProject(project) {
         if (typeof block.id !== 'string' || !block.id.trim() || ids.has(block.id)) throw fail('ID блоков должны быть уникальными.');
         ids.add(block.id);
         stringFields(block, ['text','title','caption','url','provider','videoId','youtubeId','vimeoId','language','lang','size']);
+        if (block.richText !== undefined) validateRichText(block.richText);
         if (block.showTitle !== undefined && typeof block.showTitle !== 'boolean') throw fail('Настройка показа названия видео должна быть логической.');
         if (block.columns !== undefined && (!Number.isInteger(block.columns) || block.columns < 1 || block.columns > 3)) throw fail('Количество колонок галереи: 1, 2 или 3.');
         if (block.gap !== undefined && (!Number.isFinite(block.gap) || block.gap < 0 || block.gap > 120)) throw fail('Расстояние галереи должно быть от 0 до 120 пикселей.');
@@ -143,7 +160,7 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
     });
     return server;
 }
-module.exports = { createEditorServer, validateProject };
+module.exports = { createEditorServer, validateProject, validateRichText };
 if (require.main === module) createEditorServer().then(server => {
     let port = 8765;
     server.on('listening', () => {

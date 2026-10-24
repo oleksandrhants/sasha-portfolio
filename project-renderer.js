@@ -1,4 +1,5 @@
 import { mediaSource, normalizedProjectAuthor } from "./project-data.js";
+import { renderRichText } from "./rich-text.js";
 
 const VALID_LANGUAGES = new Set(["en", "uk"]);
 const VALID_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
@@ -264,10 +265,15 @@ function renderExhibitions(block, project, context)
 const blockRenderers = {
     text(block, project, context)
     {
-        const paragraph = context.doc.createElement("p");
-        paragraph.className = "project-text";
-        paragraph.textContent = typeof block.text === "string" ? block.text : "";
-        return paragraph;
+        const container = context.doc.createElement("div");
+        container.className = "project-text";
+        if (!renderRichText(container, block.richText, context.doc))
+        {
+            const paragraph = context.doc.createElement("p");
+            paragraph.textContent = typeof block.text === "string" ? block.text : "";
+            container.appendChild(paragraph);
+        }
+        return container;
     },
     image: renderImage,
     imagePair(block, project, context)

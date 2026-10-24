@@ -5,7 +5,9 @@ body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Hel
 #project-metadata .project-title { font-size: 28px; line-height: 1.2; font-weight: normal; margin: 0 0 12px; text-transform: none; }
 #project-metadata p { margin: 4px 0; font-size: 13px; }
 #project-content { display: grid; gap: 32px; margin-top: 32px; }
-.project-text { max-width: 70ch; margin: 0; white-space: pre-wrap; }
+.project-text { max-width: 70ch; margin: 0; }
+.project-text p { margin: 0 0 1em; white-space: pre-wrap; }
+.project-text p:last-child { margin-bottom: 0; }
 figure { min-width: 0; margin: 0; }
 figure img { display: block; width: 100%; height: auto; }
 figcaption { margin-top: 8px; font-size: 12px; }
