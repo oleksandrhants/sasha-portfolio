@@ -9,7 +9,7 @@ const DRAFT_STORAGE_KEY = 'portfolio-editor-draft-v1';
 const VOCABULARY_STORAGE_KEY = 'portfolio-editor-vocabulary-v1';
 const SPLIT_STORAGE_KEY = 'portfolio-editor-split-v1';
 const STYLES_DRAFT_STORAGE_KEY = 'portfolio-editor-styles-draft-v1';
-let data, revision, token, assets = [], draft = null, baseline = '', saving = false, dragged = null;
+let data, revision, token, assets = [], assetLibrary = [], draft = null, baseline = '', saving = false, dragged = null;
 let stylesDraft = normalizeProjectStyles(null), stylesBaseline = '', stylesRevision = 'missing', view = 'projects';
 let vocabulary = { projectTypes:[], roles:[] };
 const projectDirty = () => draft && JSON.stringify(draft) !== baseline;
@@ -86,9 +86,31 @@ function multiValueField(parent, object, key, label) {
     input.addEventListener('keydown', event => { if (event.key === 'Enter') { event.preventDefault(); add(input.value || options.firstElementChild?.textContent); } if (event.key === 'Escape') { options.hidden = true; input.blur(); } });
     render();
 }
+function mediaPath(media) { return ['preview','src','large','zoom'].map(key => media?.[key]).find(value => typeof value === 'string' && value) || ''; }
+function applyLibraryAsset(media, asset) {
+    for (const key of ['preview','large','zoom']) { const value = asset[key] || asset.path; if (value) media[key] = value; }
+}
+function ensureImageLibrary() {
+    let dialog = $('#image-library'); if (dialog) return dialog;
+    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><span data-variants></span></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
+    dialog.querySelector('[data-close]').onclick = () => dialog.close(); dialog.addEventListener('click',event => { if (event.target === dialog) dialog.close(); }); document.body.append(dialog); return dialog;
+}
+function openImageLibrary({multiple=false,onConfirm}) {
+    const dialog = ensureImageLibrary(); const grid = dialog.querySelector('[data-grid]'); const search = dialog.querySelector('[data-search]'); const confirm = dialog.querySelector('[data-confirm]'); const count = dialog.querySelector('[data-count]'); const previewImage = dialog.querySelector('[data-preview]'); const name = dialog.querySelector('[data-name]'); const resolution = dialog.querySelector('[data-resolution]'); const variants = dialog.querySelector('[data-variants]');
+    const selected = new Set(); let focused = null;
+    const showPreview = asset => { focused = asset; previewImage.src = '/' + (asset.preview || asset.path); previewImage.alt = asset.name; name.textContent = asset.name; variants.textContent = `Preview: ${asset.preview ? 'yes' : 'fallback'} · Large: ${asset.large ? 'yes' : 'fallback'} · Zoom: ${asset.zoom ? 'yes' : 'fallback'}`; resolution.textContent = ''; previewImage.onload = () => { resolution.textContent = `${previewImage.naturalWidth} × ${previewImage.naturalHeight} px`; }; };
+    const update = () => { count.textContent = selected.size ? `Выбрано: ${selected.size}` : 'Ничего не выбрано'; confirm.disabled = !selected.size; grid.querySelectorAll('.image-library-item').forEach(tile => { const active = selected.has(tile.dataset.path); tile.classList.toggle('selected',active); tile.setAttribute('aria-pressed',String(active)); }); };
+    const render = () => { const query = normalizedValue(search.value).toLocaleLowerCase(); grid.replaceChildren(); for (const asset of assetLibrary.filter(item => !query || item.name.toLocaleLowerCase().includes(query) || item.path.toLocaleLowerCase().includes(query))) { const tile = document.createElement('button'); tile.type = 'button'; tile.className = 'image-library-item'; tile.dataset.path = asset.path; tile.setAttribute('aria-pressed','false'); const img = document.createElement('img'); img.src = '/' + (asset.preview || asset.path); img.alt = ''; img.loading = 'lazy'; const caption = document.createElement('span'); caption.textContent = asset.name; tile.append(img,caption); tile.onclick = () => { if (!multiple) selected.clear(); if (multiple && selected.has(asset.path)) selected.delete(asset.path); else selected.add(asset.path); showPreview(asset); update(); }; tile.ondblclick = () => showPreview(asset); grid.append(tile); } update(); };
+    search.value = ''; search.oninput = render; confirm.onclick = () => { const chosen = assetLibrary.filter(asset => selected.has(asset.path)); if (chosen.length) onConfirm(multiple ? chosen : chosen[0]); dialog.close(); };
+    render(); dialog.showModal(); search.focus();
+}
 function imageFields(parent, image) {
+    const picker = document.createElement('div'); picker.className = 'image-picker-summary'; const current = mediaPath(image);
+    const thumbnail = document.createElement('img'); thumbnail.alt = ''; if (current) thumbnail.src = '/' + current; else thumbnail.hidden = true;
+    const choose = button('Choose image · Выбрать изображение',() => openImageLibrary({onConfirm:asset => { applyLibraryAsset(image,asset); renderBlocks(); changed(); }}),picker); choose.className = 'choose-image'; picker.prepend(thumbnail); parent.append(picker);
+    const advanced = document.createElement('details'); advanced.className = 'image-advanced'; const summary = document.createElement('summary'); summary.textContent = 'Advanced · Preview / Large / Zoom'; advanced.append(summary); parent.append(advanced);
     for (const [key, label] of [['preview','Миниатюра · preview'],['large','На странице · large'],['zoom','Увеличение · zoom'], ...(image.src ? [['src','Исходное изображение (старый формат)']] : [])]) {
-        const selected = field(parent, image, key, label, { choices:[['','Не выбрано'], ...assets.map(file => [file, file.replace(/^assets\//,'')])] });
+        const selected = field(advanced, image, key, label, { choices:[['','Не выбрано'], ...assets.map(file => [file, file.replace(/^assets\//,'')])] });
         if (image[key] && !assets.includes(image[key])) { const option = new Option(image[key] + ' (файл не найден)', image[key]); selected.add(option); selected.value = image[key]; }
     }
     field(parent, image, 'caption', 'Caption · Подпись изображения');
@@ -143,7 +165,10 @@ function itemsForm(parent, block, kind) {
         if (kind === 'image') imageFields(row, item);
         else { for (const [key, label] of kind === 'links' ? [['title','Название'],['url','Ссылка'],['description','Описание']] : [['date','Дата или период'],['year','Год'],['title','Название выставки'],['venue','Площадка'],['city','Город'],['country','Страна'],['url','Ссылка'],['description','Описание']]) field(row, item, key, label); }
     });
-    if (!['imagePair','image-pair'].includes(block.type)) button(kind === 'image' ? '＋ Изображение' : '＋ Запись', () => { block.items.push({id:uid()}); renderBlocks(); changed(); }, parent);
+    if (!['imagePair','image-pair'].includes(block.type)) {
+        if (kind === 'image' && block.type === 'gallery') button('＋ Из библиотеки',() => openImageLibrary({multiple:true,onConfirm:selected => { for(const asset of selected){ const item={id:uid()}; applyLibraryAsset(item,asset); block.items.push(item); } renderBlocks(); changed(); }}),parent);
+        button(kind === 'image' ? '＋ Изображение (пустое)' : '＋ Запись', () => { block.items.push({id:uid()}); renderBlocks(); changed(); }, parent);
+    }
 }
 function move(index, delta) { const target = index + delta; if (target < 0 || target >= draft.content.length) return; [draft.content[index],draft.content[target]] = [draft.content[target],draft.content[index]]; renderBlocks(); changed(); }
 function renewIds(object) { if (!object || typeof object !== 'object') return; if ('id' in object) object.id = uid(); if (Array.isArray(object.items)) object.items.forEach(renewIds); }
@@ -211,7 +236,7 @@ function renderForm() {
     choice.addEventListener('input', () => { if (choice.value) draft.author = {type:choice.value,name:choice.value === 'solo' ? 'Oleksandr Hants' : 'fantastic little splash'}; else delete draft.author; changed(); });
     multiValueField($('#metadata'),draft,'projectTypes','Project Types · Типы проекта');
     multiValueField($('#metadata'),draft,'roles','Roles · Роли');
-    button('Обновить список изображений', async () => { try { assets = (await api('/api/assets')).files; renderBlocks(); status('Список изображений обновлён'); } catch(e) { status(e.message,true); } }, $('#metadata'));
+    button('Обновить список изображений', async () => { try { const media=await api('/api/assets'); assets=media.files; assetLibrary=media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); renderBlocks(); status('Список изображений обновлён'); } catch(e) { status(e.message,true); } }, $('#metadata'));
     renderBlocks(); projectList(); updateStatus(); preview();
 }
 let selectedStyleKey = 'title';
@@ -346,7 +371,7 @@ window.addEventListener('preview-ready',preview);
 window.addEventListener('beforeunload',event => { if (anyDirty()) { event.preventDefault(); event.returnValue = ''; } });
 initializePreviewLayout();
 try {
-    const [state, media] = await Promise.all([api('/api/state'),api('/api/assets')]); data = state.data; revision = state.revision; token = state.token; assets = media.files; stylesDraft = normalizeProjectStyles(state.styles); stylesRevision = state.stylesRevision; stylesBaseline = JSON.stringify(stylesDraft); loadVocabulary(); projectList(); status('Выберите проект');
+    const [state, media] = await Promise.all([api('/api/state'),api('/api/assets')]); data = state.data; revision = state.revision; token = state.token; assets = media.files; assetLibrary = media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); stylesDraft = normalizeProjectStyles(state.styles); stylesRevision = state.stylesRevision; stylesBaseline = JSON.stringify(stylesDraft); loadVocabulary(); projectList(); status('Выберите проект');
     const saved = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || 'null');
     if (saved?.draft && JSON.stringify(saved.draft) !== saved.baseline && confirm('Восстановить несохранённый черновик из этого браузера?')) { draft = saved.draft; baseline = saved.baseline; if (saved.revision !== revision) { revision = saved.revision; } renderForm(); }
     const savedStyles = JSON.parse(localStorage.getItem(STYLES_DRAFT_STORAGE_KEY) || 'null');
