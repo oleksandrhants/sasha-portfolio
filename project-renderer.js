@@ -297,8 +297,16 @@ const blockRenderers = {
     spacer(block, project, context)
     {
         const spacer = context.doc.createElement("div");
-        const size = ["small", "medium", "large"].includes(block.size) ? block.size : "medium";
-        spacer.className = `project-spacer project-spacer-${size}`;
+        if (Number.isFinite(block.units) && block.units >= 0 && block.units <= 20)
+        {
+            spacer.className = "project-spacer project-spacer-numeric";
+            spacer.style.height = `calc(var(--project-spacer-unit, 10px) * ${block.units})`;
+        }
+        else
+        {
+            const size = ["small", "medium", "large"].includes(block.size) ? block.size : "medium";
+            spacer.className = `project-spacer project-spacer-${size}`;
+        }
         spacer.setAttribute("aria-hidden", "true");
         return spacer;
     }

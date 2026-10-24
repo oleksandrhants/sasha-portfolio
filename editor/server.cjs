@@ -83,7 +83,11 @@ function validateProject(project) {
             if (id && !(provider === 'youtube' ? /^[\w-]{11}$/ : /^\d+$/).test(id)) throw fail('Проверьте ID видео.');
             if (!id && block.url) { let url; try { url = new URL(block.url); } catch { throw fail('Проверьте ссылку на видео.'); } const host = url.hostname; if (url.protocol !== 'https:' || !(provider === 'youtube' ? host === 'youtu.be' || host === 'youtube.com' || host.endsWith('.youtube.com') : host === 'vimeo.com' || host.endsWith('.vimeo.com'))) throw fail('Ссылка должна вести на выбранную видеоплатформу.'); }
         }
-        if (block.type === 'spacer' && !['small','medium','large'].includes(block.size)) throw fail('Выберите размер отступа.');
+        if (block.type === 'spacer') {
+            const numeric = Number.isFinite(block.units) && block.units >= 0 && block.units <= 20;
+            const legacy = ['small','medium','large'].includes(block.size);
+            if (!numeric && !legacy) throw fail('Spacer должен содержать множитель от 0 до 20 или старый размер.');
+        }
     }
 }
 

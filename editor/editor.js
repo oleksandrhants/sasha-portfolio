@@ -181,7 +181,18 @@ function renderBlocks() {
             help(card, 'Название всегда используется как доступное имя видеоплеера. На странице оно видно только при включённой настройке ниже.');
             field(card,block,'showTitle','Показывать название видео на странице',{ check:true });
             field(card,block,'caption','Подпись под видео');
-        } else if (block.type === 'spacer') field(card,block,'size','Размер отступа',{ choices:[['small','Небольшой'],['medium','Средний'],['large','Большой']] });
+        } else if (block.type === 'spacer') {
+            if (Number.isFinite(block.units)) {
+                const input = field(card,block,'units','Множитель базового отступа',{number:true,min:0,max:20,step:.1});
+                const calculated = document.createElement('p'); calculated.className = 'field-help spacer-calculation';
+                const update = () => { calculated.textContent = `Рассчитанная высота: ${(Math.min(20,Math.max(0,Number(input.value) || 0)) * stylesDraft.spacing.spacerUnit).toFixed(1).replace(/\.0$/,'')} px`; };
+                input.addEventListener('input',update); update(); card.append(calculated);
+            } else {
+                field(card,block,'size','Старый размер отступа',{ choices:[['small','Небольшой · 16 px'],['medium','Средний · 40 px'],['large','Большой · 80 px']] });
+                help(card,'Legacy Spacer сохраняет прежний фиксированный размер и не зависит от глобальной единицы.');
+                button('Преобразовать в числовой Spacer',() => { const pixels={small:16,medium:40,large:80}[block.size] || 40; block.units=Number((pixels/stylesDraft.spacing.spacerUnit).toFixed(2)); delete block.size; renderBlocks(); changed(); },card);
+            }
+        }
         else { const warning = document.createElement('p'); warning.textContent = 'Этот блок пока не редактируется. Данные сохранятся.'; card.append(warning); }
         $('#blocks').append(card);
     });
@@ -249,13 +260,14 @@ function showView(next) {
     $('#project-view').hidden = view !== 'projects'; $('#styles-view').hidden = view !== 'styles'; $('#project-sidebar').hidden = view !== 'projects';
     $('#show-projects').classList.toggle('active',view === 'projects'); $('#show-styles').classList.toggle('active',view === 'styles');
     if (view === 'styles') { if (!draft && data.projects[0]) { draft = clone(data.projects[0]); baseline = JSON.stringify(draft); } renderStyleControls(); }
+    else if (draft) renderBlocks();
     updateStatus(); preview();
 }
 function mayLeave() { if (saving) { status('Дождитесь завершения сохранения.'); return false; } return !dirty() || confirm('Есть несохранённые изменения. Перейти без сохранения? Черновик текущего проекта будет заменён.'); }
 function selectProject(project) { if (!mayLeave()) return; draft = clone(project); baseline = JSON.stringify(draft); for (const block of draft.content || []) { block.id ||= uid(); } draft.content ??= []; renderForm(); persistDraft(); }
 $('#new').onclick = () => { if (!mayLeave()) return; draft = {id:uid(),title:'Новый проект',year:'',author:{type:'solo',name:'Oleksandr Hants'},projectTypes:[],roles:[],content:[]}; baseline = ''; renderForm(); persistDraft(); };
 $('#duplicate-project').onclick = () => { if (saving) return; const copy = clone(draft); renewIds(copy); copy.id = uid(); copy.title += ' — копия'; draft = copy; baseline = ''; renderForm(); persistDraft(); };
-$('#add-block').onclick = () => { const type = $('#block-type').value; const block = {id:uid(),type}; if (type === 'text') block.text = ''; if (['gallery','links','exhibitions'].includes(type)) block.items = []; if (type === 'imagePair') block.items = [{id:uid()},{id:uid()}]; if (type === 'video') block.provider = 'youtube'; if (type === 'spacer') block.size = 'medium'; draft.content.push(block); renderBlocks(); changed(); };
+$('#add-block').onclick = () => { const type = $('#block-type').value; const block = {id:uid(),type}; if (type === 'text') block.text = ''; if (['gallery','links','exhibitions'].includes(type)) block.items = []; if (type === 'imagePair') block.items = [{id:uid()},{id:uid()}]; if (type === 'video') block.provider = 'youtube'; if (type === 'spacer') block.units = 4; draft.content.push(block); renderBlocks(); changed(); };
 $('#show-projects').onclick = () => showView('projects');
 $('#show-styles').onclick = () => showView('styles');
 $('#reset-all-styles').onclick = () => { if (!confirm('Вернуть все Project Styles к исходным значениям?')) return; stylesDraft = normalizeProjectStyles(null); renderStyleControls(); styleChanged(); };
