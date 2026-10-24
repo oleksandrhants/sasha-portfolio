@@ -60,6 +60,8 @@ function renderImage(media, project, context)
     const zoomSource = textValue(media.zoom);
     const frame = doc.createElement("div");
     frame.className = "project-image-frame";
+    const imageContent = doc.createElement("div");
+    imageContent.className = "project-image-content";
     if (zoomSource && typeof onImageZoom === "function")
     {
         const button = doc.createElement("button");
@@ -74,12 +76,24 @@ function renderImage(media, project, context)
             credit: textValue(media.credit),
             trigger: button
         }));
-        frame.appendChild(button);
+        imageContent.appendChild(button);
     }
-    else frame.appendChild(image);
+    else imageContent.appendChild(image);
 
+    frame.appendChild(imageContent);
     figure.appendChild(frame);
-    addCaption(figure, media.caption, doc);
+    const captionValue = textValue(media.caption);
+    if (captionValue)
+    {
+        const caption = doc.createElement("figcaption");
+        caption.textContent = captionValue;
+        imageContent.appendChild(caption);
+        const sizer = doc.createElement("div");
+        sizer.className = "project-image-caption-sizer";
+        sizer.setAttribute("aria-hidden", "true");
+        sizer.textContent = captionValue;
+        figure.appendChild(sizer);
+    }
     return figure;
 }
 

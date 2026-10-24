@@ -69,6 +69,7 @@ function validateProjectStyles(value) {
         if (!['top','center','bottom'].includes(value.layout.verticalImageAlignment)) throw fail('Некорректное вертикальное выравнивание изображений.');
         if (!['left','center','right'].includes(value.layout.horizontalImageAlignment)) throw fail('Некорректное горизонтальное выравнивание изображений.');
         if (!['left','center','right'].includes(value.layout.captionAlignment)) throw fail('Некорректное выравнивание подписей.');
+        if (value.layout.imageCaptionGap !== undefined && (!Number.isFinite(value.layout.imageCaptionGap) || value.layout.imageCaptionGap < 0 || value.layout.imageCaptionGap > 60)) throw fail('Отступ подписи должен быть от 0 до 60 px.');
     }
 }
 

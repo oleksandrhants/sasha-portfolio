@@ -12,7 +12,11 @@ body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Hel
 figure { min-width: 0; margin: 0; }
 figure img { display: block; width: 100%; height: auto; margin-left: var(--project-image-margin-left, 0); margin-right: var(--project-image-margin-right, 0); }
 figcaption { margin-top: 8px; text-align: var(--project-caption-align, left); font-family: var(--project-imageCaption-family, Arial, Helvetica, sans-serif); font-size: var(--project-imageCaption-size, 12px); font-weight: var(--project-imageCaption-weight, 400); font-style: var(--project-imageCaption-style, normal); color: var(--project-imageCaption-color, #252525); }
+.project-image { display: grid; grid-template-rows: auto auto; }
 .project-image-frame { display: flex; align-items: var(--project-image-vertical-align, start); justify-content: var(--project-image-horizontal-align, left); min-width: 0; }
+.project-image-content { position: relative; width: 100%; max-width: 100%; }
+.project-image-content > figcaption { position: absolute; top: 100%; left: 0; width: 100%; margin-top: var(--project-image-caption-gap, 10px); }
+.project-image-caption-sizer { visibility: hidden; grid-row: 2; margin-top: var(--project-image-caption-gap, 10px); text-align: var(--project-caption-align, left); font-family: var(--project-imageCaption-family, Arial, Helvetica, sans-serif); font-size: var(--project-imageCaption-size, 12px); font-weight: var(--project-imageCaption-weight, 400); font-style: var(--project-imageCaption-style, normal); }
 .project-gallery, .project-image-pair { display: grid; align-items: stretch; }
 .project-gallery > .project-image, .project-image-pair > .project-image { display: grid; grid-row: span 2; grid-template-rows: subgrid; align-self: stretch; }
 .project-gallery > .project-image > .project-image-frame, .project-image-pair > .project-image > .project-image-frame { align-self: var(--project-image-vertical-align, start); }

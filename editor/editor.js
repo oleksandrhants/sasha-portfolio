@@ -313,6 +313,7 @@ function renderStyleControls() {
     styleInput(layout,stylesDraft.layout,'verticalImageAlignment','Vertical image alignment',{choices:[['top','Top'],['center','Center'],['bottom','Bottom']],defaultValue:DEFAULT_PROJECT_STYLES.layout.verticalImageAlignment});
     styleInput(layout,stylesDraft.layout,'horizontalImageAlignment','Horizontal image alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.horizontalImageAlignment});
     styleInput(layout,stylesDraft.layout,'captionAlignment','Image caption alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.captionAlignment});
+    styleInput(layout,stylesDraft.layout,'imageCaptionGap','Image caption gap, px',{min:0,max:60,step:1,defaultValue:DEFAULT_PROJECT_STYLES.layout.imageCaptionGap});
     root.append(layout);
 }
 function showView(next) {

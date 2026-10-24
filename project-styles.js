@@ -14,7 +14,7 @@ export const DEFAULT_PROJECT_STYLES = {
         exhibitionsHeading:type(15), exhibitionsEntry:type(15)
     },
     spacing:{ bodyLineHeight:1.6, paragraphGap:15, blockGap:32, headerGap:32, spacerUnit:10 },
-    layout:{ textColumnWidth:null, verticalImageAlignment:"top", horizontalImageAlignment:"left", captionAlignment:"left" }
+    layout:{ textColumnWidth:null, verticalImageAlignment:"top", horizontalImageAlignment:"left", captionAlignment:"left", imageCaptionGap:10 }
 };
 
 const FAMILIES = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif"]);
@@ -46,6 +46,7 @@ export function normalizeProjectStyles(value)
     if (["top","center","bottom"].includes(layout.verticalImageAlignment)) result.layout.verticalImageAlignment = layout.verticalImageAlignment;
     if (["left","center","right"].includes(layout.horizontalImageAlignment)) result.layout.horizontalImageAlignment = layout.horizontalImageAlignment;
     if (["left","center","right"].includes(layout.captionAlignment)) result.layout.captionAlignment = layout.captionAlignment;
+    result.layout.imageCaptionGap = clamp(layout.imageCaptionGap, 0, 60, result.layout.imageCaptionGap);
     return result;
 }
 
@@ -84,5 +85,6 @@ export function applyProjectStyles(value, doc = document)
     root.style.setProperty("--project-image-vertical-align", ({top:"start",center:"center",bottom:"end"})[styles.layout.verticalImageAlignment]);
     root.style.setProperty("--project-image-horizontal-align", ({left:"flex-start",center:"center",right:"flex-end"})[styles.layout.horizontalImageAlignment]);
     root.style.setProperty("--project-caption-align", styles.layout.captionAlignment);
+    root.style.setProperty("--project-image-caption-gap", `${styles.layout.imageCaptionGap}px`);
     return styles;
 }
