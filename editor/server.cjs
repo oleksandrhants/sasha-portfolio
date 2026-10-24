@@ -7,6 +7,27 @@ const revision = bytes => createHash('sha256').update(bytes).digest('hex');
 const fail = (message, status = 400) => Object.assign(new Error(message), { status });
 const types = new Set(['text','image','imagePair','image-pair','gallery','video','youtube','vimeo','links','materials','exhibitions','spacer']);
 const richUrlProtocols = new Set(['http:','https:','mailto:']);
+const importExtensions = new Set(['.jpg','.jpeg','.png','.webp','.avif']);
+const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
+
+function validImageSignature(bytes, extension) {
+    if (extension === '.jpg' || extension === '.jpeg') return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+    if (extension === '.png') return bytes.length >= 8 && bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+    if (extension === '.webp') return bytes.length >= 12 && bytes.toString('ascii',0,4) === 'RIFF' && bytes.toString('ascii',8,12) === 'WEBP';
+    if (extension === '.avif') return bytes.length >= 16 && bytes.toString('ascii',4,8) === 'ftyp' && /^(?:avif|avis|mif1|msf1)$/.test(bytes.toString('ascii',8,12));
+    return false;
+}
+
+function safeImportParts(relative) {
+    if (typeof relative !== 'string' || !relative || relative.length > 1000 || relative.includes('\0')) throw fail('Некорректное имя импортируемого файла.');
+    const parts = relative.replace(/\\/g,'/').split('/').filter(Boolean);
+    if (!parts.length || parts.some(part => part === '.' || part === '..')) throw fail('Некорректный путь импортируемого файла.');
+    return parts.map(part => {
+        const clean = part.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/g,'').slice(0,120);
+        if (!clean) throw fail('Некорректное имя импортируемого файла.');
+        return clean;
+    });
+}
 
 function validateRichText(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1 || !Array.isArray(value.paragraphs) || value.paragraphs.length > 500) throw fail('Некорректный формат rich text.');
@@ -105,6 +126,7 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
     const stylesFile = path.join(root, 'data', 'project-styles.json');
     const backupDir = path.join(root, '.editor-backups');
     const stylesBackupDir = path.join(backupDir, 'styles');
+    const importDir = path.join(root, 'assets', 'imported');
     const token = randomBytes(32).toString('hex');
     let saving = false;
     const inside = file => file.startsWith(root + path.sep);
@@ -149,6 +171,18 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
         try { await handle.writeFile(bytes); await handle.sync(); await handle.close(); await fs.rename(temp,stylesFile); }
         catch (error) { await handle.close().catch(()=>{}); await fs.unlink(temp).catch(()=>{}); throw error; }
     }
+    async function importAsset(relative, bytes) {
+        const parts = safeImportParts(relative); const extension = path.extname(parts.at(-1)).toLowerCase();
+        if (!importExtensions.has(extension)) throw fail('Поддерживаются JPEG, PNG, WebP и AVIF.');
+        if (!bytes.length || bytes.length > MAX_IMPORT_BYTES) throw fail('Размер одного изображения должен быть от 1 байта до 50 MB.',413);
+        if (!validImageSignature(bytes,extension)) throw fail('Содержимое файла не соответствует формату изображения.');
+        const folder = path.resolve(importDir,...parts.slice(0,-1)); const importRoot = path.resolve(importDir);
+        if (folder !== importRoot && !folder.startsWith(importRoot + path.sep)) throw fail('Недопустимый путь импорта.',403);
+        await fs.mkdir(folder,{recursive:true});
+        const parsed = path.parse(parts.at(-1)); let candidate = path.join(folder,parts.at(-1)); let suffix = 2;
+        while (true) { try { const handle=await fs.open(candidate,'wx'); try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); } break; } catch(error) { if(error.code !== 'EEXIST') throw error; candidate=path.join(folder,`${parsed.name}-${suffix++}${parsed.ext}`); } }
+        return path.relative(root,candidate).split(path.sep).join('/');
+    }
     const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.webp':'image/webp', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.avif':'image/avif' };
     const server = http.createServer(async (req, res) => {
         const send = (status, data) => { res.writeHead(status, { 'Content-Type':'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
@@ -166,6 +200,12 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
                     await walk(await safePath('assets')); return send(200, { files });
                 }
                 if (req.method === 'GET' && url.pathname === '/api/backups') { let names = []; try { await safePath('.editor-backups'); names = (await fs.readdir(backupDir)).filter(x => /^[\w.-]+\.json$/.test(x)).sort().reverse(); } catch (e) { if (e.code !== 'ENOENT') throw e; } return send(200, { names }); }
+                if (req.method === 'POST' && url.pathname === '/api/assets/import') {
+                    if (req.headers['x-editor-token'] !== token || req.headers.origin !== origin || req.headers['content-type'] !== 'application/octet-stream') throw fail('Доступ запрещён.',403);
+                    let relative; try { relative=decodeURIComponent(String(req.headers['x-relative-path'] || req.headers['x-file-name'] || '')); } catch { throw fail('Некорректное имя файла.'); }
+                    const chunks=[]; let total=0; for await(const chunk of req){ total+=chunk.length; if(total>MAX_IMPORT_BYTES) throw fail('Файл превышает ограничение 50 MB.',413); chunks.push(chunk); }
+                    const imported=await importAsset(relative,Buffer.concat(chunks,total)); return send(201,{path:imported});
+                }
                 if (req.method !== 'POST' || !['/api/save','/api/restore','/api/styles/save'].includes(url.pathname)) throw fail('Не найдено.', 404);
                 if (req.headers['x-editor-token'] !== token || req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json')) throw fail('Доступ запрещён.', 403);
                 let body = ''; for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 10 * 1024 * 1024) throw fail('Слишком большой проект.', 413); }

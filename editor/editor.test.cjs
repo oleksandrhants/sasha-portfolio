@@ -29,12 +29,17 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.throws(()=>validateRichText({version:1,paragraphs:[{runs:[{text:'unsafe',href:'javascript:alert(1)'}]}]}),/Недопустимая ссылка/);
     assert.throws(()=>validateRichText({version:1,paragraphs:[{runs:[{text:'unsafe',onclick:'alert(1)'}]}]}),/неподдерживаемое/);
     const post = (route, value, extra={}) => fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json',Origin:base,'X-Editor-Token':state.token,...extra},body:JSON.stringify(value)});
+    const importRaw = (relative,bytes) => fetch(base+'/api/assets/import',{method:'POST',headers:{'Content-Type':'application/octet-stream',Origin:base,'X-Editor-Token':state.token,'X-Relative-Path':encodeURIComponent(relative)},body:bytes});
     assert.equal((await post('/api/save',{project:{},revision:state.revision},{'X-Editor-Token':'wrong'})).status,403);
     assert.equal((await fetch(base+'/.git/config')).status,403);
     assert.equal((await fetch(base+'/editor/server.cjs')).status,403);
     assert.equal((await fetch(base+'/api/state',{headers:{Origin:'https://example.com'}})).status,403);
     assert.equal((await post('/api/save',{project:{id:'bad',title:'Bad',content:[{id:'x',type:'image',src:'../outside.jpg'}]},revision:state.revision})).status,400);
     assert.equal((await post('/api/styles/save',{styles:{version:1},revision:state.stylesRevision})).status,400);
+    assert.equal((await importRaw('unsafe.txt',Buffer.from('not an image'))).status,400);
+    const importBytes=await fs.readFile(path.join(root,'assets/images/st2.webp'));
+    const firstImport=await (await importRaw('duplicate.webp',importBytes)).json(); const secondImport=await (await importRaw('duplicate.webp',importBytes)).json(); const folderImport=await (await importRaw('Converter Output/Set One/folder.webp',importBytes)).json();
+    assert.equal(firstImport.path,'assets/imported/duplicate.webp'); assert.equal(secondImport.path,'assets/imported/duplicate-2.webp'); assert.equal(folderImport.path,'assets/imported/Converter Output/Set One/folder.webp');
     assert.equal(await fs.readFile(path.join(root,'data/projects.json'),'utf8'),original);
 
     const chrome = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -92,6 +97,9 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-field="roles"] .multi-value-chip')].map(button=>button.textContent)`),['artist','programming']);
     for(const type of ['text','image','imagePair','gallery','video','links','exhibitions','spacer']) await evaluate(`document.querySelector('#block-type').value=${JSON.stringify(type)}; document.querySelector('#add-block').click()`);
     await evaluate(`document.querySelectorAll('.block')[1].querySelector('.choose-image').click()`); await wait(`document.querySelector('#image-library')?.open`);
+    await evaluate(`(async()=>{const blob=await(await fetch('/assets/images/st2.webp')).blob();const file=new File([blob],'browser-import.webp',{type:'image/webp'});const transfer=new DataTransfer();transfer.items.add(file);const input=[...document.querySelectorAll('#image-library input[type=file]')].find(input=>!input.hasAttribute('webkitdirectory'));Object.defineProperty(input,'files',{value:transfer.files,configurable:true});input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    await wait(`document.querySelector('#status').textContent.includes('Импортировано изображений: 1')`);
+    assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length >= 11`),true);
     await evaluate(`(()=>{const search=document.querySelector('#image-library [data-search]');search.value='10.webp';search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
     assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length`),1);
     await evaluate(`document.querySelector('#image-library .image-library-item').click()`); await wait(`document.querySelector('#image-library [data-resolution]').textContent.includes('×')`);

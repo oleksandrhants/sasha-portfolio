@@ -27,6 +27,16 @@ async function api(url, body) {
     const response = await fetch(url, body ? { method:'POST', headers:{'Content-Type':'application/json','X-Editor-Token':token}, body:JSON.stringify(body) } : {});
     const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Ошибка сервера'); return result;
 }
+async function refreshAssets() { const media=await api('/api/assets'); assets=media.files; assetLibrary=media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); return media; }
+async function importImageFiles(fileList, dialog) {
+    const files=[...fileList]; if(!files.length) return;
+    for(const [index,file] of files.entries()) {
+        status(`Импорт ${index+1}/${files.length}: ${file.name}…`);
+        const response=await fetch('/api/assets/import',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Editor-Token':token,'X-File-Name':encodeURIComponent(file.name),'X-Relative-Path':encodeURIComponent(file.webkitRelativePath || file.name)},body:file});
+        const result=await response.json(); if(!response.ok) throw new Error(result.error || `Не удалось импортировать ${file.name}`);
+    }
+    await refreshAssets(); dialog.querySelector('[data-search]').dispatchEvent(new Event('input',{bubbles:true})); renderBlocks(); status(`Импортировано изображений: ${files.length}`);
+}
 function button(text, action, parent) { const element = document.createElement('button'); element.type = 'button'; element.textContent = text; element.onclick = action; parent.append(element); return element; }
 function field(parent, object, key, label, options = {}) {
     const wrap = document.createElement('label'); wrap.textContent = label;
@@ -92,7 +102,11 @@ function applyLibraryAsset(media, asset) {
 }
 function ensureImageLibrary() {
     let dialog = $('#image-library'); if (dialog) return dialog;
-    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><span data-variants></span></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
+    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><div class="image-library-tools"><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><button type="button" data-import-files>Import images · Импортировать изображения</button><button type="button" data-import-folder>Import folder · Импортировать папку</button></div><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><span data-variants></span></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
+    const files=document.createElement('input'); files.type='file'; files.accept='.jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif'; files.multiple=true; files.hidden=true;
+    const folder=files.cloneNode(); folder.setAttribute('webkitdirectory',''); folder.setAttribute('directory','');
+    dialog.append(files,folder); dialog.querySelector('[data-import-files]').onclick=()=>files.click(); dialog.querySelector('[data-import-folder]').onclick=()=>folder.click();
+    for(const input of [files,folder]) input.addEventListener('change',async()=>{ try{await importImageFiles(input.files,dialog);}catch(error){status(error.message,true);}finally{input.value='';} });
     dialog.querySelector('[data-close]').onclick = () => dialog.close(); dialog.addEventListener('click',event => { if (event.target === dialog) dialog.close(); }); document.body.append(dialog); return dialog;
 }
 function openImageLibrary({multiple=false,onConfirm}) {
@@ -236,7 +250,7 @@ function renderForm() {
     choice.addEventListener('input', () => { if (choice.value) draft.author = {type:choice.value,name:choice.value === 'solo' ? 'Oleksandr Hants' : 'fantastic little splash'}; else delete draft.author; changed(); });
     multiValueField($('#metadata'),draft,'projectTypes','Project Types · Типы проекта');
     multiValueField($('#metadata'),draft,'roles','Roles · Роли');
-    button('Обновить список изображений', async () => { try { const media=await api('/api/assets'); assets=media.files; assetLibrary=media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); renderBlocks(); status('Список изображений обновлён'); } catch(e) { status(e.message,true); } }, $('#metadata'));
+    button('Обновить список изображений', async () => { try { await refreshAssets(); renderBlocks(); status('Список изображений обновлён'); } catch(e) { status(e.message,true); } }, $('#metadata'));
     renderBlocks(); projectList(); updateStatus(); preview();
 }
 let selectedStyleKey = 'title';
