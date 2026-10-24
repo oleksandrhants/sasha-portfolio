@@ -9,7 +9,7 @@ const DRAFT_STORAGE_KEY = 'portfolio-editor-draft-v1';
 const VOCABULARY_STORAGE_KEY = 'portfolio-editor-vocabulary-v1';
 const SPLIT_STORAGE_KEY = 'portfolio-editor-split-v1';
 const STYLES_DRAFT_STORAGE_KEY = 'portfolio-editor-styles-draft-v1';
-let data, revision, token, assets = [], assetLibrary = [], draft = null, baseline = '', saving = false, dragged = null;
+let data, revision, token, assets = [], assetLibrary = [], conversionManifest = {found:false,supported:false,paths:[]}, draft = null, baseline = '', saving = false, dragged = null;
 let stylesDraft = normalizeProjectStyles(null), stylesBaseline = '', stylesRevision = 'missing', view = 'projects';
 let vocabulary = { projectTypes:[], roles:[] };
 const projectDirty = () => draft && JSON.stringify(draft) !== baseline;
@@ -27,7 +27,7 @@ async function api(url, body) {
     const response = await fetch(url, body ? { method:'POST', headers:{'Content-Type':'application/json','X-Editor-Token':token}, body:JSON.stringify(body) } : {});
     const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Ошибка сервера'); return result;
 }
-async function refreshAssets() { const media=await api('/api/assets'); assets=media.files; assetLibrary=media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); return media; }
+async function refreshAssets() { const media=await api('/api/assets'); assets=media.files; assetLibrary=media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); conversionManifest=media.conversionManifest || {found:false,supported:false,paths:[]}; return media; }
 async function importImageFiles(fileList, dialog) {
     const files=[...fileList]; if(!files.length) return;
     for(const [index,file] of files.entries()) {
@@ -98,19 +98,23 @@ function multiValueField(parent, object, key, label) {
 }
 function mediaPath(media) { return ['preview','src','large','zoom'].map(key => media?.[key]).find(value => typeof value === 'string' && value) || ''; }
 function applyLibraryAsset(media, asset) {
-    for (const key of ['preview','large','zoom']) { const value = asset[key] || asset.path; if (value) media[key] = value; }
+    for (const key of ['src','preview','large','zoom']) delete media[key];
+    if(asset.source) media.src=asset.source;
+    for (const key of ['preview','large','zoom']) if(asset[key]) media[key]=asset[key];
+    if(!media.src && !media.preview && !media.large && !media.zoom) media.preview=asset.path;
 }
 function ensureImageLibrary() {
     let dialog = $('#image-library'); if (dialog) return dialog;
-    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><div class="image-library-tools"><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><button type="button" data-import-files>Import images · Импортировать изображения</button><button type="button" data-import-folder>Import folder · Импортировать папку</button></div><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><span data-variants></span></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
+    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><div class="image-library-tools"><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><button type="button" data-import-files>Import images · Импортировать изображения</button><button type="button" data-import-folder>Import folder · Импортировать папку</button></div><p class="field-help" data-manifest></p><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><span data-variants></span></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
     const files=document.createElement('input'); files.type='file'; files.accept='.jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif'; files.multiple=true; files.hidden=true;
-    const folder=files.cloneNode(); folder.setAttribute('webkitdirectory',''); folder.setAttribute('directory','');
+    const folder=files.cloneNode(); folder.removeAttribute('accept'); folder.setAttribute('webkitdirectory',''); folder.setAttribute('directory','');
     dialog.append(files,folder); dialog.querySelector('[data-import-files]').onclick=()=>files.click(); dialog.querySelector('[data-import-folder]').onclick=()=>folder.click();
     for(const input of [files,folder]) input.addEventListener('change',async()=>{ try{await importImageFiles(input.files,dialog);}catch(error){status(error.message,true);}finally{input.value='';} });
     dialog.querySelector('[data-close]').onclick = () => dialog.close(); dialog.addEventListener('click',event => { if (event.target === dialog) dialog.close(); }); document.body.append(dialog); return dialog;
 }
 function openImageLibrary({multiple=false,onConfirm}) {
     const dialog = ensureImageLibrary(); const grid = dialog.querySelector('[data-grid]'); const search = dialog.querySelector('[data-search]'); const confirm = dialog.querySelector('[data-confirm]'); const count = dialog.querySelector('[data-count]'); const previewImage = dialog.querySelector('[data-preview]'); const name = dialog.querySelector('[data-name]'); const resolution = dialog.querySelector('[data-resolution]'); const variants = dialog.querySelector('[data-variants]');
+    dialog.querySelector('[data-manifest]').textContent = conversionManifest.found ? 'conversion-manifest.json найден, но его формат пока не распознан; используется надёжное сопоставление по суффиксам имён.' : 'conversion-manifest.json не найден; версии сопоставляются только по явным суффиксам имён.';
     const selected = new Set(); let focused = null;
     const showPreview = asset => { focused = asset; previewImage.src = '/' + (asset.preview || asset.path); previewImage.alt = asset.name; name.textContent = asset.name; variants.textContent = `Preview: ${asset.preview ? 'yes' : 'fallback'} · Large: ${asset.large ? 'yes' : 'fallback'} · Zoom: ${asset.zoom ? 'yes' : 'fallback'}`; resolution.textContent = ''; previewImage.onload = () => { resolution.textContent = `${previewImage.naturalWidth} × ${previewImage.naturalHeight} px`; }; };
     const update = () => { count.textContent = selected.size ? `Выбрано: ${selected.size}` : 'Ничего не выбрано'; confirm.disabled = !selected.size; grid.querySelectorAll('.image-library-item').forEach(tile => { const active = selected.has(tile.dataset.path); tile.classList.toggle('selected',active); tile.setAttribute('aria-pressed',String(active)); }); };
@@ -385,7 +389,7 @@ window.addEventListener('preview-ready',preview);
 window.addEventListener('beforeunload',event => { if (anyDirty()) { event.preventDefault(); event.returnValue = ''; } });
 initializePreviewLayout();
 try {
-    const [state, media] = await Promise.all([api('/api/state'),api('/api/assets')]); data = state.data; revision = state.revision; token = state.token; assets = media.files; assetLibrary = media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); stylesDraft = normalizeProjectStyles(state.styles); stylesRevision = state.stylesRevision; stylesBaseline = JSON.stringify(stylesDraft); loadVocabulary(); projectList(); status('Выберите проект');
+    const [state, media] = await Promise.all([api('/api/state'),api('/api/assets')]); data = state.data; revision = state.revision; token = state.token; assets = media.files; assetLibrary = media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); conversionManifest=media.conversionManifest || conversionManifest; stylesDraft = normalizeProjectStyles(state.styles); stylesRevision = state.stylesRevision; stylesBaseline = JSON.stringify(stylesDraft); loadVocabulary(); projectList(); status('Выберите проект');
     const saved = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || 'null');
     if (saved?.draft && JSON.stringify(saved.draft) !== saved.baseline && confirm('Восстановить несохранённый черновик из этого браузера?')) { draft = saved.draft; baseline = saved.baseline; if (saved.revision !== revision) { revision = saved.revision; } renderForm(); }
     const savedStyles = JSON.parse(localStorage.getItem(STYLES_DRAFT_STORAGE_KEY) || 'null');

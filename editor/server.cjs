@@ -29,6 +29,16 @@ function safeImportParts(relative) {
     });
 }
 
+function groupAssetFiles(files) {
+    const sorted=[...files].sort((a,b)=>a.localeCompare(b)); const groups=new Map(); const explicitKeys=new Set();
+    const details=assetPath=>{ const parsed=path.posix.parse(assetPath); const match=parsed.name.match(/^(.*?)[-_.](preview|large|zoom)$/i); return {parsed,base:match?.[1] || parsed.name,variant:match?.[2]?.toLowerCase() || '',key:`${parsed.dir}/${(match?.[1] || parsed.name).toLocaleLowerCase()}`}; };
+    for(const file of sorted){ const item=details(file); if(item.variant) explicitKeys.add(item.key); }
+    const standalone=[];
+    for(const file of sorted){ const item=details(file); if(!item.variant && !explicitKeys.has(item.key)){ standalone.push({path:file,name:item.parsed.base,variants:['source']}); continue; } const group=groups.get(item.key) || {base:item.base,dir:item.parsed.dir,extension:item.parsed.ext,source:'',preview:'',large:'',zoom:''}; if(item.variant){ if(!group[item.variant]) group[item.variant]=file; } else if(!group.source) group.source=file; groups.set(item.key,group); }
+    const grouped=[...groups.values()].map(group=>{ const pathValue=group.preview || group.source || group.large || group.zoom; const asset={path:pathValue,name:`${group.base}${group.extension}`,variants:[]}; for(const key of ['preview','large','zoom']) if(group[key]){asset[key]=group[key];asset.variants.push(key);} if(group.source){asset.source=group.source;asset.variants.push('source');} return asset; });
+    return [...standalone,...grouped].sort((a,b)=>a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
+}
+
 function validateRichText(value) {
     if (!value || typeof value !== 'object' || Array.isArray(value) || value.version !== 1 || !Array.isArray(value.paragraphs) || value.paragraphs.length > 500) throw fail('Некорректный формат rich text.');
     for (const paragraph of value.paragraphs) {
@@ -173,9 +183,12 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
     }
     async function importAsset(relative, bytes) {
         const parts = safeImportParts(relative); const extension = path.extname(parts.at(-1)).toLowerCase();
-        if (!importExtensions.has(extension)) throw fail('Поддерживаются JPEG, PNG, WebP и AVIF.');
-        if (!bytes.length || bytes.length > MAX_IMPORT_BYTES) throw fail('Размер одного изображения должен быть от 1 байта до 50 MB.',413);
-        if (!validImageSignature(bytes,extension)) throw fail('Содержимое файла не соответствует формату изображения.');
+        const isManifest=parts.at(-1).toLowerCase() === 'conversion-manifest.json';
+        if (!importExtensions.has(extension) && !isManifest) throw fail('Поддерживаются JPEG, PNG, WebP, AVIF и conversion-manifest.json.');
+        const limit=isManifest ? 2*1024*1024 : MAX_IMPORT_BYTES;
+        if (!bytes.length || bytes.length > limit) throw fail(isManifest ? 'conversion-manifest.json превышает 2 MB.' : 'Размер одного изображения должен быть от 1 байта до 50 MB.',413);
+        if (isManifest) { try { JSON.parse(bytes.toString('utf8')); } catch { throw fail('conversion-manifest.json содержит некорректный JSON.'); } }
+        else if (!validImageSignature(bytes,extension)) throw fail('Содержимое файла не соответствует формату изображения.');
         const folder = path.resolve(importDir,...parts.slice(0,-1)); const importRoot = path.resolve(importDir);
         if (folder !== importRoot && !folder.startsWith(importRoot + path.sep)) throw fail('Недопустимый путь импорта.',403);
         await fs.mkdir(folder,{recursive:true});
@@ -195,9 +208,9 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
                 if (req.headers['sec-fetch-site'] === 'cross-site') throw fail('Доступ запрещён.', 403);
                 if (req.method === 'GET' && url.pathname === '/api/state') { const current = await readData(); const styles = await readStyles(); return send(200, { data:current.data, revision:current.revision, styles:styles.data, stylesRevision:styles.revision, token }); }
                 if (req.method === 'GET' && url.pathname === '/api/assets') {
-                    const files = [];
-                    async function walk(dir) { for (const entry of await fs.readdir(dir, { withFileTypes:true })) { if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue; const file = path.join(dir, entry.name); if (entry.isDirectory()) await walk(file); else if (/\.(webp|png|jpe?g|avif|gif)$/i.test(entry.name)) files.push(path.relative(root, file).split(path.sep).join('/')); } }
-                    await walk(await safePath('assets')); return send(200, { files });
+                    const files = []; const manifests=[];
+                    async function walk(dir) { for (const entry of await fs.readdir(dir, { withFileTypes:true })) { if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue; const file = path.join(dir, entry.name); if (entry.isDirectory()) await walk(file); else if (/\.(webp|png|jpe?g|avif|gif)$/i.test(entry.name)) files.push(path.relative(root, file).split(path.sep).join('/')); else if(entry.name.toLowerCase()==='conversion-manifest.json') manifests.push(path.relative(root,file).split(path.sep).join('/')); } }
+                    await walk(await safePath('assets')); return send(200, { files, assets:groupAssetFiles(files), conversionManifest:{found:manifests.length>0,supported:false,paths:manifests} });
                 }
                 if (req.method === 'GET' && url.pathname === '/api/backups') { let names = []; try { await safePath('.editor-backups'); names = (await fs.readdir(backupDir)).filter(x => /^[\w.-]+\.json$/.test(x)).sort().reverse(); } catch (e) { if (e.code !== 'ENOENT') throw e; } return send(200, { names }); }
                 if (req.method === 'POST' && url.pathname === '/api/assets/import') {
@@ -253,7 +266,7 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
     });
     return server;
 }
-module.exports = { createEditorServer, validateProject, validateRichText, validateProjectStyles };
+module.exports = { createEditorServer, validateProject, validateRichText, validateProjectStyles, groupAssetFiles };
 if (require.main === module) createEditorServer().then(server => {
     let port = 8765;
     server.on('listening', () => {

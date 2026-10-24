@@ -7,7 +7,7 @@ const os = require('node:os');
 const { once } = require('node:events');
 const { spawn } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
-const { createEditorServer, validateProject, validateRichText, validateProjectStyles } = require('./server.cjs');
+const { createEditorServer, validateProject, validateRichText, validateProjectStyles, groupAssetFiles } = require('./server.cjs');
 
 test('Local editor: security, real Chrome editing, save, restart and restore', { timeout:90000 }, async t => {
     const source = path.resolve(__dirname,'..');
@@ -40,6 +40,10 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     const importBytes=await fs.readFile(path.join(root,'assets/images/st2.webp'));
     const firstImport=await (await importRaw('duplicate.webp',importBytes)).json(); const secondImport=await (await importRaw('duplicate.webp',importBytes)).json(); const folderImport=await (await importRaw('Converter Output/Set One/folder.webp',importBytes)).json();
     assert.equal(firstImport.path,'assets/imported/duplicate.webp'); assert.equal(secondImport.path,'assets/imported/duplicate-2.webp'); assert.equal(folderImport.path,'assets/imported/Converter Output/Set One/folder.webp');
+    for(const name of ['art-preview.webp','art-large.webp','art-zoom.webp']) assert.equal((await importRaw('Converter Output/Grouped/'+name,importBytes)).status,201);
+    assert.equal((await importRaw('Converter Output/conversion-manifest.json',Buffer.from('{"unknownFormat":true}'))).status,201);
+    const groupedState=await(await fetch(base+'/api/assets')).json(); const artAssets=groupedState.assets.filter(asset=>asset.name==='art.webp'); assert.equal(artAssets.length,1); assert.deepEqual(artAssets[0].variants,['preview','large','zoom']); assert.equal(groupedState.conversionManifest.found,true); assert.equal(groupedState.conversionManifest.supported,false);
+    assert.equal(groupAssetFiles(['assets/set/work-preview.webp','assets/set/work-large.webp','assets/set/work-zoom.webp']).length,1);
     assert.equal(await fs.readFile(path.join(root,'data/projects.json'),'utf8'),original);
 
     const chrome = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -68,6 +72,11 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-title-size') === '36px'`);
     assert.equal(await evaluate(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-block-gap')`),'44px');
     assert.equal(await evaluate(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-text-column-width')`),'720px');
+    await evaluate(`(()=>{const controls=document.querySelectorAll('#style-controls .style-group')[2].querySelectorAll('select');controls[0].value='top';controls[0].dispatchEvent(new Event('input',{bubbles:true}));})()`); await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-image-vertical-align') === 'start'`);
+    await evaluate(`(()=>{const controls=document.querySelectorAll('#style-controls .style-group')[2].querySelectorAll('select');controls[0].value='bottom';controls[0].dispatchEvent(new Event('input',{bubbles:true}));})()`); await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-image-vertical-align') === 'end'`);
+    await evaluate(`(()=>{const controls=document.querySelectorAll('#style-controls .style-group')[2].querySelectorAll('select');controls[0].value='center';controls[0].dispatchEvent(new Event('input',{bubbles:true}));controls[1].value='left';controls[1].dispatchEvent(new Event('input',{bubbles:true}));controls[2].value='right';controls[2].dispatchEvent(new Event('input',{bubbles:true}));})()`); await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-image-horizontal-align') === 'flex-start' && document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-caption-align') === 'right'`);
+    await evaluate(`(()=>{const controls=document.querySelectorAll('#style-controls .style-group')[2].querySelectorAll('select');controls[1].value='center';controls[1].dispatchEvent(new Event('input',{bubbles:true}));controls[2].value='left';controls[2].dispatchEvent(new Event('input',{bubbles:true}));})()`); await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-image-horizontal-align') === 'center' && document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-caption-align') === 'left'`);
+    await evaluate(`(()=>{const controls=document.querySelectorAll('#style-controls .style-group')[2].querySelectorAll('select');controls[1].value='right';controls[1].dispatchEvent(new Event('input',{bubbles:true}));controls[2].value='center';controls[2].dispatchEvent(new Event('input',{bubbles:true}));})()`);
     await evaluate(`document.querySelector('#save').click()`); await wait(`document.querySelector('#status').textContent.includes('Резервная копия создана')`);
     await evaluate(`document.querySelector('#show-projects').click()`);
     const splitterBox=await evaluate(`(()=>{const box=document.querySelector('#panel-splitter').getBoundingClientRect();return {x:box.x+box.width/2,y:box.y+40}})()`);
@@ -97,15 +106,19 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-field="roles"] .multi-value-chip')].map(button=>button.textContent)`),['artist','programming']);
     for(const type of ['text','image','imagePair','gallery','video','links','exhibitions','spacer']) await evaluate(`document.querySelector('#block-type').value=${JSON.stringify(type)}; document.querySelector('#add-block').click()`);
     await evaluate(`document.querySelectorAll('.block')[1].querySelector('.choose-image').click()`); await wait(`document.querySelector('#image-library')?.open`);
+    assert.equal(await evaluate(`document.querySelector('#image-library [data-manifest]').textContent.includes('формат пока не распознан')`),true);
     await evaluate(`(async()=>{const blob=await(await fetch('/assets/images/st2.webp')).blob();const file=new File([blob],'browser-import.webp',{type:'image/webp'});const transfer=new DataTransfer();transfer.items.add(file);const input=[...document.querySelectorAll('#image-library input[type=file]')].find(input=>!input.hasAttribute('webkitdirectory'));Object.defineProperty(input,'files',{value:transfer.files,configurable:true});input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
     await wait(`document.querySelector('#status').textContent.includes('Импортировано изображений: 1')`);
     assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length >= 11`),true);
     await evaluate(`(()=>{const search=document.querySelector('#image-library [data-search]');search.value='10.webp';search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
     assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length`),1);
     await evaluate(`document.querySelector('#image-library .image-library-item').click()`); await wait(`document.querySelector('#image-library [data-resolution]').textContent.includes('×')`);
-    assert.equal(await evaluate(`document.querySelector('#image-library [data-variants]').textContent.includes('Preview: yes')`),true);
+    assert.equal(await evaluate(`document.querySelector('#image-library [data-variants]').textContent.includes('Preview: fallback')`),true);
     await evaluate(`document.querySelector('#image-library [data-confirm]').click()`);
     assert.equal(await evaluate(`document.querySelectorAll('.block')[1].querySelector('.image-picker-summary img').getAttribute('src')`),'/assets/images/10.webp');
+    await evaluate(`document.querySelectorAll('.block')[1].querySelector('.choose-image').click();(()=>{const search=document.querySelector('#image-library [data-search]');search.value='art.webp';search.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#image-library .image-library-item').click();document.querySelector('#image-library [data-confirm]').click();})()`);
+    assert.deepEqual(await evaluate(`[...document.querySelectorAll('.block')[1].querySelectorAll('.image-advanced select')].slice(0,3).map(select=>select.value)`),['assets/imported/Converter Output/Grouped/art-preview.webp','assets/imported/Converter Output/Grouped/art-large.webp','assets/imported/Converter Output/Grouped/art-zoom.webp']);
+    await evaluate(`document.querySelectorAll('.block')[1].querySelector('.choose-image').click();(()=>{const search=document.querySelector('#image-library [data-search]');search.value='10.webp';search.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#image-library .image-library-item').click();document.querySelector('#image-library [data-confirm]').click();})()`);
     await evaluate(`document.querySelectorAll('.block')[3].querySelectorAll('button')[5].click()`); await wait(`document.querySelector('#image-library')?.open`);
     await evaluate(`(()=>{const tiles=document.querySelectorAll('#image-library .image-library-item');tiles[0].click();tiles[1].click();document.querySelector('#image-library [data-confirm]').click();})()`);
     assert.equal(await evaluate(`document.querySelectorAll('.block')[3].querySelectorAll('.item').length`),2);
