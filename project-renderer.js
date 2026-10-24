@@ -58,6 +58,8 @@ function renderImage(media, project, context)
     if (Number.isFinite(media.height) && media.height > 0) image.height = media.height;
 
     const zoomSource = textValue(media.zoom);
+    const frame = doc.createElement("div");
+    frame.className = "project-image-frame";
     if (zoomSource && typeof onImageZoom === "function")
     {
         const button = doc.createElement("button");
@@ -72,10 +74,11 @@ function renderImage(media, project, context)
             credit: textValue(media.credit),
             trigger: button
         }));
-        figure.appendChild(button);
+        frame.appendChild(button);
     }
-    else figure.appendChild(image);
+    else frame.appendChild(image);
 
+    figure.appendChild(frame);
     addCaption(figure, media.caption, doc);
     return figure;
 }

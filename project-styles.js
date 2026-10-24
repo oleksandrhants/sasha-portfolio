@@ -13,7 +13,8 @@ export const DEFAULT_PROJECT_STYLES = {
         imageCaption:type(12), photoCredit:type(12), videoTitle:type(15), videoCaption:type(12), materialsHeading:type(15),
         exhibitionsHeading:type(15), exhibitionsEntry:type(15)
     },
-    spacing:{ bodyLineHeight:1.6, paragraphGap:15, blockGap:32, headerGap:32, spacerUnit:10 }
+    spacing:{ bodyLineHeight:1.6, paragraphGap:15, blockGap:32, headerGap:32, spacerUnit:10 },
+    layout:{ textColumnWidth:null, verticalImageAlignment:"top", horizontalImageAlignment:"left", captionAlignment:"left" }
 };
 
 const FAMILIES = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif"]);
@@ -40,6 +41,11 @@ export function normalizeProjectStyles(value)
     result.spacing.blockGap = clamp(spacing.blockGap, 0, 240, result.spacing.blockGap);
     result.spacing.headerGap = clamp(spacing.headerGap, 0, 240, result.spacing.headerGap);
     result.spacing.spacerUnit = clamp(spacing.spacerUnit, 1, 100, result.spacing.spacerUnit);
+    const layout = value.layout || {};
+    result.layout.textColumnWidth = layout.textColumnWidth === null || layout.textColumnWidth === undefined ? null : clamp(layout.textColumnWidth, 480, 1000, null);
+    if (["top","center","bottom"].includes(layout.verticalImageAlignment)) result.layout.verticalImageAlignment = layout.verticalImageAlignment;
+    if (["left","center","right"].includes(layout.horizontalImageAlignment)) result.layout.horizontalImageAlignment = layout.horizontalImageAlignment;
+    if (["left","center","right"].includes(layout.captionAlignment)) result.layout.captionAlignment = layout.captionAlignment;
     return result;
 }
 
@@ -74,5 +80,9 @@ export function applyProjectStyles(value, doc = document)
     root.style.setProperty("--project-block-gap", `${styles.spacing.blockGap}px`);
     root.style.setProperty("--project-header-gap", `${styles.spacing.headerGap}px`);
     root.style.setProperty("--project-spacer-unit", `${styles.spacing.spacerUnit}px`);
+    root.style.setProperty("--project-text-column-width", styles.layout.textColumnWidth === null ? "70ch" : `${styles.layout.textColumnWidth}px`);
+    root.style.setProperty("--project-image-vertical-align", ({top:"start",center:"center",bottom:"end"})[styles.layout.verticalImageAlignment]);
+    root.style.setProperty("--project-image-horizontal-align", ({left:"flex-start",center:"center",right:"flex-end"})[styles.layout.horizontalImageAlignment]);
+    root.style.setProperty("--project-caption-align", styles.layout.captionAlignment);
     return styles;
 }

@@ -5,14 +5,17 @@ body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Hel
 #project-metadata .project-title { line-height: 1.2; margin: 0 0 12px; text-transform: none; font-family: var(--project-title-family, Arial, Helvetica, sans-serif); font-size: var(--project-title-size, 28px); font-weight: var(--project-title-weight, 400); font-style: var(--project-title-style, normal); color: var(--project-title-color, #252525); }
 #project-metadata p { margin: 4px 0; font-family: var(--project-metadata-family, Arial, Helvetica, sans-serif); font-size: var(--project-metadata-size, 13px); font-weight: var(--project-metadata-weight, 400); font-style: var(--project-metadata-style, normal); color: var(--project-metadata-color, #252525); }
 #project-content { display: grid; gap: var(--project-block-gap, 32px); margin-top: var(--project-header-gap, 32px); }
-.project-text { max-width: 70ch; margin: 0; }
+.project-text { width: 100%; max-width: min(100%, var(--project-text-column-width, 70ch)); margin: 0; }
 .project-text p { margin: 0 0 var(--project-paragraph-gap, 15px); white-space: pre-wrap; font-family: var(--project-body-family, Arial, Helvetica, sans-serif); font-size: var(--project-body-size, 15px); font-weight: var(--project-body-weight, 400); font-style: var(--project-body-style, normal); line-height: var(--project-body-line-height, 1.6); color: var(--project-body-color, #252525); }
 .project-text p:last-child { margin-bottom: 0; }
 .project-text a, .project-list-block a { font-family: var(--project-links-family, Arial, Helvetica, sans-serif); font-size: var(--project-links-size, 15px); font-weight: var(--project-links-weight, 400); font-style: var(--project-links-style, normal); color: var(--project-links-color, #252525); }
 figure { min-width: 0; margin: 0; }
-figure img { display: block; width: 100%; height: auto; }
-figcaption { margin-top: 8px; font-family: var(--project-imageCaption-family, Arial, Helvetica, sans-serif); font-size: var(--project-imageCaption-size, 12px); font-weight: var(--project-imageCaption-weight, 400); font-style: var(--project-imageCaption-style, normal); color: var(--project-imageCaption-color, #252525); }
-.project-gallery, .project-image-pair { display: grid; align-items: start; }
+figure img { display: block; width: 100%; height: auto; margin-left: var(--project-image-margin-left, 0); margin-right: var(--project-image-margin-right, 0); }
+figcaption { margin-top: 8px; text-align: var(--project-caption-align, left); font-family: var(--project-imageCaption-family, Arial, Helvetica, sans-serif); font-size: var(--project-imageCaption-size, 12px); font-weight: var(--project-imageCaption-weight, 400); font-style: var(--project-imageCaption-style, normal); color: var(--project-imageCaption-color, #252525); }
+.project-image-frame { display: flex; align-items: var(--project-image-vertical-align, start); justify-content: var(--project-image-horizontal-align, left); min-width: 0; }
+.project-gallery, .project-image-pair { display: grid; align-items: stretch; }
+.project-gallery > .project-image, .project-image-pair > .project-image { display: grid; grid-row: span 2; grid-template-rows: subgrid; align-self: stretch; }
+.project-gallery > .project-image > .project-image-frame, .project-image-pair > .project-image > .project-image-frame { align-self: var(--project-image-vertical-align, start); }
 .project-gallery { grid-template-columns: repeat(var(--gallery-columns, 2), minmax(0, 1fr)); gap: var(--gallery-gap, 16px); }
 .project-image-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .project-image-zoom { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; cursor: zoom-in; }

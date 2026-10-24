@@ -59,9 +59,10 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     await wait('document.querySelector("#preview").contentDocument.querySelector(".project-title")');
     assert.equal(await evaluate('document.querySelectorAll(".block").length'),state.data.projects[0].content.length);
     assert.equal(await evaluate('document.querySelector("#preview").contentDocument.querySelector(".project-gallery").style.getPropertyValue("--gallery-columns")'),'2');
-    await evaluate(`document.querySelector('#show-styles').click(); const groups=document.querySelectorAll('#style-controls .style-group'); const titleSize=groups[0].querySelector('input[type=number]'); titleSize.value='36'; titleSize.dispatchEvent(new Event('input',{bubbles:true})); const titleWeight=groups[0].querySelectorAll('select')[2]; titleWeight.value='700'; titleWeight.dispatchEvent(new Event('input',{bubbles:true})); const spacing=groups[1].querySelectorAll('input[type=number]'); spacing[2].value='44'; spacing[2].dispatchEvent(new Event('input',{bubbles:true}));`);
+    await evaluate(`document.querySelector('#show-styles').click(); const groups=document.querySelectorAll('#style-controls .style-group'); const titleSize=groups[0].querySelector('input[type=number]'); titleSize.value='36'; titleSize.dispatchEvent(new Event('input',{bubbles:true})); const titleWeight=groups[0].querySelectorAll('select')[2]; titleWeight.value='700'; titleWeight.dispatchEvent(new Event('input',{bubbles:true})); const spacing=groups[1].querySelectorAll('input[type=number]'); spacing[2].value='44'; spacing[2].dispatchEvent(new Event('input',{bubbles:true})); const layout=groups[2]; const widthToggle=layout.querySelector('input[type=checkbox]'); widthToggle.checked=true; widthToggle.dispatchEvent(new Event('input',{bubbles:true})); const width=layout.querySelector('input[type=number]'); width.value='720'; width.dispatchEvent(new Event('input',{bubbles:true})); const alignments=layout.querySelectorAll('select'); for(const [control,value] of [[alignments[0],'center'],[alignments[1],'right'],[alignments[2],'center']]){control.value=value;control.dispatchEvent(new Event('input',{bubbles:true}));}`);
     await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-title-size') === '36px'`);
     assert.equal(await evaluate(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-block-gap')`),'44px');
+    assert.equal(await evaluate(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-text-column-width')`),'720px');
     await evaluate(`document.querySelector('#save').click()`); await wait(`document.querySelector('#status').textContent.includes('Резервная копия создана')`);
     await evaluate(`document.querySelector('#show-projects').click()`);
     const splitterBox=await evaluate(`(()=>{const box=document.querySelector('#panel-splitter').getBoundingClientRect();return {x:box.x+box.width/2,y:box.y+40}})()`);
@@ -100,6 +101,9 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal(await evaluate('document.querySelector("#preview").contentDocument.querySelector(".project-gallery").style.getPropertyValue("--gallery-columns")'),'3');
     assert.equal(await evaluate('document.querySelector("#preview").contentDocument.querySelector(".project-gallery").style.getPropertyValue("--gallery-gap")'),'24px');
     assert.equal(await evaluate('document.querySelector("#preview").contentDocument.querySelector(".project-video-title").textContent'),'Visible video title');
+    assert.equal(await evaluate('getComputedStyle(document.querySelector("#preview").contentDocument.querySelector(".project-gallery .project-image-frame")).alignSelf'),'center');
+    assert.equal(await evaluate('getComputedStyle(document.querySelector("#preview").contentDocument.querySelector(".project-gallery .project-image-frame")).justifyContent'),'flex-end');
+    assert.equal(await evaluate('getComputedStyle(document.querySelector("#preview").contentDocument.querySelector(".project-image figcaption")).textAlign'),'center');
     assert.equal(await evaluate('getComputedStyle(document.querySelector("#preview").contentDocument.querySelector(".project-spacer-numeric")).height'),'15px');
     await evaluate(`(()=>{document.querySelector('#show-styles').click(); const spacerSpacing=document.querySelectorAll('#style-controls .style-group')[1].querySelectorAll('input[type=number]'); spacerSpacing[4].value='8'; spacerSpacing[4].dispatchEvent(new Event('input',{bubbles:true}));})()`);
     await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-spacer-unit') === '8px'`);
@@ -132,13 +136,14 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal((await post('/api/save',{project:created,revision:state.revision})).status,409);
     server.closeAllConnections(); await new Promise(resolve=>server.close(resolve));
     server=await createEditorServer({root}); server.listen(0,'127.0.0.1'); await once(server,'listening'); base=`http://127.0.0.1:${server.address().port}`;
-    state=await(await fetch(base+'/api/state')).json(); assert.equal(state.data.projects.at(-1).title,'Editor integration test'); assert.equal(state.styles.typography.title.fontSize,36); assert.equal(state.styles.typography.title.fontWeight,700); assert.equal(state.styles.spacing.blockGap,44);
+    state=await(await fetch(base+'/api/state')).json(); assert.equal(state.data.projects.at(-1).title,'Editor integration test'); assert.equal(state.styles.typography.title.fontSize,36); assert.equal(state.styles.typography.title.fontWeight,700); assert.equal(state.styles.spacing.blockGap,44); assert.equal(state.styles.layout.textColumnWidth,720); assert.equal(state.styles.layout.verticalImageAlignment,'center'); assert.equal(state.styles.layout.horizontalImageAlignment,'right'); assert.equal(state.styles.layout.captionAlignment,'center');
     await cdp('Page.navigate',{url:base+'/editor/index.html'}); await wait('document.querySelectorAll("#projects button").length > 1');
     await evaluate('document.querySelector("#projects button:last-child").click()'); await wait('document.querySelectorAll(".block").length === 8');
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-field="projectTypes"] .multi-value-chip')].map(button=>button.textContent)`),created.projectTypes);
     await cdp('Page.navigate',{url:base+'/project.html?id='+created.id}); await wait('document.querySelector("#project-status")?.hidden');
     assert.equal(await evaluate('document.querySelector(".project-title").textContent'),'Editor integration test');
     assert.equal(await evaluate('getComputedStyle(document.querySelector(".project-title")).fontSize'),'36px');
+    assert.equal(await evaluate('document.querySelector(".project-text").getBoundingClientRect().width <= 720'),true);
     assert.equal(await evaluate('document.querySelector(".project-video-title").textContent'),'Visible video title');
     await evaluate('document.querySelector(".project-image-zoom").click()'); await wait('document.querySelector(".project-lightbox").open');
     assert.equal(await evaluate('document.querySelector(".project-lightbox-credit").textContent'),'Photo: Test photographer');

@@ -32,6 +32,9 @@
 .style-control-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: end; }
 .style-control-row label { margin: 0; }
 .style-reset { margin-bottom: 8px; }
+.text-width-control { display: grid; grid-template-columns: minmax(0,1fr) minmax(120px,.7fr); gap: 8px; align-items: end; margin-bottom: 14px; }
+.text-width-control > input[type="range"] { grid-column: 1 / -1; }
+.text-width-control > button { justify-self: start; }
 .multi-value-field { position: relative; margin-bottom: 14px; }
 .multi-value-label { display: block; margin-bottom: 5px; font-size: 12px; }
 .multi-value-control { padding: 6px; border: 1px solid #c8c8c0; border-radius: 4px; background: #fff; }

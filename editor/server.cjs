@@ -32,6 +32,13 @@ function validateProjectStyles(value) {
         if (!item || !styleFamilies.has(item.fontFamily) || !Number.isFinite(item.fontSize) || item.fontSize < 8 || item.fontSize > 96 || ![300,400,500,600,700,800,900].includes(item.fontWeight) || typeof item.italic !== 'boolean' || typeof item.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.color)) throw fail(`Некорректный стиль: ${key}.`);
     }
     for (const [key,min,max] of [['bodyLineHeight',1,3],['paragraphGap',0,120],['blockGap',0,240],['headerGap',0,240],['spacerUnit',1,100]]) if (!Number.isFinite(value.spacing[key]) || value.spacing[key] < min || value.spacing[key] > max) throw fail(`Некорректный отступ: ${key}.`);
+    if (value.layout !== undefined) {
+        if (!value.layout || typeof value.layout !== 'object') throw fail('Некорректная группа Image Layout.');
+        if (value.layout.textColumnWidth !== null && (!Number.isFinite(value.layout.textColumnWidth) || value.layout.textColumnWidth < 480 || value.layout.textColumnWidth > 1000)) throw fail('Ширина текстовой колонки должна быть от 480 до 1000 px или использовать исходное значение.');
+        if (!['top','center','bottom'].includes(value.layout.verticalImageAlignment)) throw fail('Некорректное вертикальное выравнивание изображений.');
+        if (!['left','center','right'].includes(value.layout.horizontalImageAlignment)) throw fail('Некорректное горизонтальное выравнивание изображений.');
+        if (!['left','center','right'].includes(value.layout.captionAlignment)) throw fail('Некорректное выравнивание подписей.');
+    }
 }
 
 function validateProject(project) {

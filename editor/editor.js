@@ -255,6 +255,22 @@ function renderStyleControls() {
         ['bodyLineHeight','Body line height',1,3,.05],['paragraphGap','Paragraph spacing, px',0,120,1],['blockGap','Main block gap, px',0,240,1],['headerGap','Gap after project header, px',0,240,1],['spacerUnit','Base Spacer unit, px',1,100,1]
     ]) styleInput(spacing,stylesDraft.spacing,key,label,{min,max,step,defaultValue:DEFAULT_PROJECT_STYLES.spacing[key]});
     root.append(spacing);
+    const layout = document.createElement('section'); layout.className = 'style-group'; const layoutTitle = document.createElement('h2'); layoutTitle.textContent = 'Text width & Image Layout'; layout.append(layoutTitle);
+    const widthRow = document.createElement('div'); widthRow.className = 'text-width-control';
+    const enabledLabel = document.createElement('label'); enabledLabel.className = 'check'; enabledLabel.textContent = 'Use pixel Text column width';
+    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = stylesDraft.layout.textColumnWidth !== null; enabledLabel.prepend(enabled);
+    const numberLabel = document.createElement('label'); numberLabel.textContent = 'Text column width, px'; const number = document.createElement('input'); number.type = 'number'; number.min = '480'; number.max = '1000'; number.step = '1'; number.value = stylesDraft.layout.textColumnWidth ?? 720; numberLabel.append(number);
+    const range = document.createElement('input'); range.type = 'range'; range.min = '480'; range.max = '1000'; range.step = '1'; range.value = number.value; range.setAttribute('aria-label','Text column width slider');
+    const widthReset = button('Reset to legacy 70ch',() => { stylesDraft.layout.textColumnWidth = null; renderStyleControls(); styleChanged(); },widthRow);
+    const setWidthState = () => { number.disabled = range.disabled = !enabled.checked; };
+    const updateWidth = value => { const next = Math.min(1000,Math.max(480,Number(value) || 720)); stylesDraft.layout.textColumnWidth = next; number.value = range.value = String(next); enabled.checked = true; setWidthState(); styleChanged(); };
+    enabled.addEventListener('input',() => { stylesDraft.layout.textColumnWidth = enabled.checked ? Number(number.value) : null; setWidthState(); styleChanged(); });
+    number.addEventListener('input',() => updateWidth(number.value)); range.addEventListener('input',() => updateWidth(range.value));
+    widthRow.append(enabledLabel,numberLabel,range,widthReset); layout.append(widthRow); setWidthState();
+    styleInput(layout,stylesDraft.layout,'verticalImageAlignment','Vertical image alignment',{choices:[['top','Top'],['center','Center'],['bottom','Bottom']],defaultValue:DEFAULT_PROJECT_STYLES.layout.verticalImageAlignment});
+    styleInput(layout,stylesDraft.layout,'horizontalImageAlignment','Horizontal image alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.horizontalImageAlignment});
+    styleInput(layout,stylesDraft.layout,'captionAlignment','Image caption alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.captionAlignment});
+    root.append(layout);
 }
 function showView(next) {
     view = next;
