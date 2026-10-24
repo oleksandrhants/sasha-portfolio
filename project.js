@@ -1,5 +1,6 @@
 import { loadProjects } from "./project-data.js";
 import { createProjectImageZoom, renderProject } from "./project-renderer.js";
+import { applyProjectStyles, loadProjectStyles } from "./project-styles.js";
 
 const status = document.querySelector("#project-status");
 const metadata = document.querySelector("#project-metadata");
@@ -12,7 +13,8 @@ async function loadProject()
     if (!id) { status.textContent = "Choose a project from Projects above."; return; }
     try
     {
-        const projects = await loadProjects();
+        const [projects, styles] = await Promise.all([loadProjects(), loadProjectStyles()]);
+        applyProjectStyles(styles);
         const project = projects.find(item => item.id === id);
         if (!project) { status.textContent = "Project not found. Choose a project from Projects above."; return; }
         renderProject(project, {

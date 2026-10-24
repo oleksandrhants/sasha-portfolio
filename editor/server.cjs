@@ -23,6 +23,17 @@ function validateRichText(value) {
     }
 }
 
+const styleElements = ['title','author','metadata','body','links','listText','imageCaption','photoCredit','videoTitle','videoCaption','materialsHeading','exhibitionsHeading','exhibitionsEntry'];
+const styleFamilies = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif"]);
+function validateProjectStyles(value) {
+    if (!value || typeof value !== 'object' || value.version !== 1 || !value.typography || !value.spacing) throw fail('Некорректные Project Styles.');
+    for (const key of styleElements) {
+        const item = value.typography[key];
+        if (!item || !styleFamilies.has(item.fontFamily) || !Number.isFinite(item.fontSize) || item.fontSize < 8 || item.fontSize > 96 || ![300,400,500,600,700,800,900].includes(item.fontWeight) || typeof item.italic !== 'boolean' || typeof item.color !== 'string' || !/^#[0-9a-f]{6}$/i.test(item.color)) throw fail(`Некорректный стиль: ${key}.`);
+    }
+    for (const [key,min,max] of [['bodyLineHeight',1,3],['paragraphGap',0,120],['blockGap',0,240],['headerGap',0,240],['spacerUnit',1,100]]) if (!Number.isFinite(value.spacing[key]) || value.spacing[key] < min || value.spacing[key] > max) throw fail(`Некорректный отступ: ${key}.`);
+}
+
 function validateProject(project) {
     if (!project || typeof project !== 'object' || Array.isArray(project)) throw fail('Некорректный проект.');
     if (typeof project.id !== 'string' || !/^[\w-]{1,160}$/.test(project.id)) throw fail('Некорректный ID проекта.');
@@ -79,7 +90,9 @@ function validateProject(project) {
 async function createEditorServer({ root = path.resolve(__dirname, '..') } = {}) {
     root = await fs.realpath(root);
     const dataFile = path.join(root, 'data', 'projects.json');
+    const stylesFile = path.join(root, 'data', 'project-styles.json');
     const backupDir = path.join(root, '.editor-backups');
+    const stylesBackupDir = path.join(backupDir, 'styles');
     const token = randomBytes(32).toString('hex');
     let saving = false;
     const inside = file => file.startsWith(root + path.sep);
@@ -89,6 +102,10 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
         return file;
     }
     async function readData() { await safePath('data/projects.json'); const bytes = await fs.readFile(dataFile); return { bytes, data: JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/, '')), revision: revision(bytes) }; }
+    async function readStyles() {
+        try { const bytes = await fs.readFile(stylesFile); let data = null; try { data = JSON.parse(bytes.toString('utf8').replace(/^\uFEFF/, '')); } catch { /* Editor can repair a corrupt optional styles file. */ } return {bytes,data,revision:revision(bytes)}; }
+        catch (error) { if (error.code === 'ENOENT') return {bytes:Buffer.alloc(0),data:null,revision:'missing'}; throw error; }
+    }
     async function backup(bytes) {
         await fs.mkdir(backupDir, { recursive: true });
         if (!inside(await fs.realpath(backupDir))) throw fail('Недопустимая папка копий.', 403);
@@ -105,6 +122,21 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
             await fs.rename(temp, dataFile);
         } catch (error) { await handle.close().catch(() => {}); await fs.unlink(temp).catch(() => {}); throw error; }
     }
+    async function backupStyles(bytes) {
+        if (!bytes.length) return null;
+        await fs.mkdir(stylesBackupDir, { recursive:true });
+        if (!inside(await fs.realpath(stylesBackupDir))) throw fail('Недопустимая папка копий.',403);
+        const name = `${new Date().toISOString().replace(/[:.]/g,'-')}-${randomBytes(4).toString('hex')}.json`;
+        const handle = await fs.open(path.join(stylesBackupDir,name),'wx');
+        try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); }
+        return name;
+    }
+    async function replaceStyles(bytes) {
+        const temp = path.join(root,'data',`.project-styles-${randomBytes(12).toString('hex')}.tmp`);
+        const handle = await fs.open(temp,'wx');
+        try { await handle.writeFile(bytes); await handle.sync(); await handle.close(); await fs.rename(temp,stylesFile); }
+        catch (error) { await handle.close().catch(()=>{}); await fs.unlink(temp).catch(()=>{}); throw error; }
+    }
     const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.webp':'image/webp', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.avif':'image/avif' };
     const server = http.createServer(async (req, res) => {
         const send = (status, data) => { res.writeHead(status, { 'Content-Type':'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
@@ -115,20 +147,29 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
             const url = new URL(req.url, origin);
             if (url.pathname.startsWith('/api/')) {
                 if (req.headers['sec-fetch-site'] === 'cross-site') throw fail('Доступ запрещён.', 403);
-                if (req.method === 'GET' && url.pathname === '/api/state') { const current = await readData(); return send(200, { data:current.data, revision:current.revision, token }); }
+                if (req.method === 'GET' && url.pathname === '/api/state') { const current = await readData(); const styles = await readStyles(); return send(200, { data:current.data, revision:current.revision, styles:styles.data, stylesRevision:styles.revision, token }); }
                 if (req.method === 'GET' && url.pathname === '/api/assets') {
                     const files = [];
                     async function walk(dir) { for (const entry of await fs.readdir(dir, { withFileTypes:true })) { if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue; const file = path.join(dir, entry.name); if (entry.isDirectory()) await walk(file); else if (/\.(webp|png|jpe?g|avif|gif)$/i.test(entry.name)) files.push(path.relative(root, file).split(path.sep).join('/')); } }
                     await walk(await safePath('assets')); return send(200, { files });
                 }
                 if (req.method === 'GET' && url.pathname === '/api/backups') { let names = []; try { await safePath('.editor-backups'); names = (await fs.readdir(backupDir)).filter(x => /^[\w.-]+\.json$/.test(x)).sort().reverse(); } catch (e) { if (e.code !== 'ENOENT') throw e; } return send(200, { names }); }
-                if (req.method !== 'POST' || !['/api/save','/api/restore'].includes(url.pathname)) throw fail('Не найдено.', 404);
+                if (req.method !== 'POST' || !['/api/save','/api/restore','/api/styles/save'].includes(url.pathname)) throw fail('Не найдено.', 404);
                 if (req.headers['x-editor-token'] !== token || req.headers.origin !== origin || !req.headers['content-type']?.startsWith('application/json')) throw fail('Доступ запрещён.', 403);
                 let body = ''; for await (const chunk of req) { body += chunk; if (Buffer.byteLength(body) > 10 * 1024 * 1024) throw fail('Слишком большой проект.', 413); }
                 const input = JSON.parse(body);
                 if (saving) throw fail('Сохранение уже выполняется.', 409);
                 saving = true;
                 try {
+                    if (url.pathname === '/api/styles/save') {
+                        const currentStyles = await readStyles();
+                        if (input.revision !== currentStyles.revision) throw fail('Файл стилей изменился вне редактора. Обновите страницу.',409);
+                        validateProjectStyles(input.styles);
+                        const bytes = Buffer.from(JSON.stringify(input.styles,null,2)+'\n');
+                        const backupName = await backupStyles(currentStyles.bytes);
+                        await replaceStyles(bytes);
+                        return send(200,{styles:input.styles,revision:revision(bytes),backup:backupName});
+                    }
                     const current = await readData();
                     if (input.revision !== current.revision) throw fail('Файл изменился вне редактора. Обновите страницу, сохранив нужные тексты.', 409);
                     let next = current.data;
@@ -153,14 +194,14 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
             const relative = decodeURIComponent(['/', '/editor/'].includes(url.pathname) ? '/editor/index.html' : url.pathname).slice(1);
             if (relative.split(/[\\/]/).some(p => p.startsWith('.') || p === '..') || relative.includes('\0')) throw fail('Доступ запрещён.', 403);
             const ext = path.extname(relative).toLowerCase();
-            if (!mime[ext] || (ext === '.json' && relative !== 'data/projects.json' && !relative.startsWith('presets/'))) throw fail('Доступ запрещён.', 403);
+            if (!mime[ext] || (ext === '.json' && !['data/projects.json','data/project-styles.json'].includes(relative) && !relative.startsWith('presets/'))) throw fail('Доступ запрещён.', 403);
             const bytes = await fs.readFile(await safePath(relative));
             res.writeHead(200, { 'Content-Type':mime[ext] }); res.end(req.method === 'HEAD' ? undefined : bytes);
         } catch (error) { if (!res.headersSent) send(error.status || (error.code === 'ENOENT' ? 404 : 500), { error: error.status ? error.message : 'Не удалось выполнить операцию. Исходный файл и резервные копии сохранены.' }); else res.end(); }
     });
     return server;
 }
-module.exports = { createEditorServer, validateProject, validateRichText };
+module.exports = { createEditorServer, validateProject, validateRichText, validateProjectStyles };
 if (require.main === module) createEditorServer().then(server => {
     let port = 8765;
     server.on('listening', () => {

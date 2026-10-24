@@ -333,6 +333,7 @@ function renderMetadata(project, metadata, doc)
     {
         if (!value) continue;
         const line = doc.createElement("p");
+        line.className = `project-metadata-line project-metadata-${label.toLowerCase().replace(/\s+/g, "-")}`;
         line.textContent = `${label}: ${value}`;
         metadata.appendChild(line);
     }

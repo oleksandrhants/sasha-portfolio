@@ -1,4 +1,5 @@
 import { populateRichTextEditor, richTextFromElement, richTextToPlain, safeRichTextUrl } from '../rich-text.js';
+import { DEFAULT_PROJECT_STYLES, PROJECT_STYLE_ELEMENTS, normalizeProjectStyles } from '../project-styles.js';
 
 const $ = selector => document.querySelector(selector);
 const clone = value => structuredClone(value);
@@ -7,15 +8,21 @@ const labels = { text:'Text · Текст', image:'Image · Изображени
 const DRAFT_STORAGE_KEY = 'portfolio-editor-draft-v1';
 const VOCABULARY_STORAGE_KEY = 'portfolio-editor-vocabulary-v1';
 const SPLIT_STORAGE_KEY = 'portfolio-editor-split-v1';
+const STYLES_DRAFT_STORAGE_KEY = 'portfolio-editor-styles-draft-v1';
 let data, revision, token, assets = [], draft = null, baseline = '', saving = false, dragged = null;
+let stylesDraft = normalizeProjectStyles(null), stylesBaseline = '', stylesRevision = 'missing', view = 'projects';
 let vocabulary = { projectTypes:[], roles:[] };
-const dirty = () => draft && JSON.stringify(draft) !== baseline;
+const projectDirty = () => draft && JSON.stringify(draft) !== baseline;
+const stylesDirty = () => JSON.stringify(stylesDraft) !== stylesBaseline;
+const dirty = () => view === 'styles' ? stylesDirty() : projectDirty();
+const anyDirty = () => projectDirty() || stylesDirty();
 function status(message, error = false) { $('#status').textContent = message; $('#status').classList.toggle('error', error); }
-function updateStatus() { $('#save').disabled = !draft || saving || !dirty(); status(dirty() ? 'Есть несохранённые изменения' : 'Все изменения сохранены'); }
-function preview() { try { if (draft) $('#preview').contentWindow.renderDraft?.(clone(draft)); } catch (error) { status('Предпросмотр: ' + error.message, true); } }
+function updateStatus() { $('#save').disabled = (view === 'projects' && !draft) || saving || !dirty(); status(dirty() ? 'Есть несохранённые изменения' : 'Все изменения сохранены'); }
+function preview() { try { if (draft) $('#preview').contentWindow.renderDraft?.(clone(draft), clone(stylesDraft)); } catch (error) { status('Предпросмотр: ' + error.message, true); } }
 let previewTimer;
 function changed() { clearTimeout(previewTimer); previewTimer = setTimeout(preview, 160); updateStatus(); persistDraft(); const selected = $('#projects button.active'); if (selected) selected.textContent = draft.title || 'Без названия'; }
 function persistDraft() { try { if (draft) localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ draft, baseline, revision })); } catch { /* Save remains available if browser storage is full. */ } }
+function persistStylesDraft() { try { localStorage.setItem(STYLES_DRAFT_STORAGE_KEY, JSON.stringify({ draft:stylesDraft, baseline:stylesBaseline, revision:stylesRevision })); } catch { /* Saving to disk remains available. */ } }
 async function api(url, body) {
     const response = await fetch(url, body ? { method:'POST', headers:{'Content-Type':'application/json','X-Editor-Token':token}, body:JSON.stringify(body) } : {});
     const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Ошибка сервера'); return result;
@@ -195,16 +202,72 @@ function renderForm() {
     button('Обновить список изображений', async () => { try { assets = (await api('/api/assets')).files; renderBlocks(); status('Список изображений обновлён'); } catch(e) { status(e.message,true); } }, $('#metadata'));
     renderBlocks(); projectList(); updateStatus(); preview();
 }
+let selectedStyleKey = 'title';
+const FONT_CHOICES = [
+    ['Arial, Helvetica, sans-serif','Arial / Helvetica'],
+    ["Georgia, 'Times New Roman', serif",'Georgia / Times'],
+    ["'Courier New', Courier, monospace",'Courier New'],
+    ['system-ui, sans-serif','System UI']
+];
+function styleChanged() { clearTimeout(previewTimer); previewTimer = setTimeout(preview,80); persistStylesDraft(); updateStatus(); }
+function styleInput(parent, object, key, label, options = {}) {
+    const row = document.createElement('div'); row.className = 'style-control-row';
+    const wrap = document.createElement('label'); wrap.textContent = label;
+    const input = document.createElement(options.choices ? 'select' : 'input');
+    if (options.choices) for (const [value,title] of options.choices) input.append(new Option(title,value));
+    else if (options.check) input.type = 'checkbox'; else if (options.color) input.type = 'color'; else input.type = 'number';
+    if (options.check) input.checked = object[key] === true; else input.value = object[key];
+    if (options.min !== undefined) input.min = options.min; if (options.max !== undefined) input.max = options.max; if (options.step !== undefined) input.step = options.step;
+    input.addEventListener('input',() => { object[key] = options.check ? input.checked : options.choices || options.color ? input.value : Number(input.value); styleChanged(); });
+    wrap.append(input); row.append(wrap);
+    const reset = button('Reset',() => { object[key] = clone(options.defaultValue); renderStyleControls(); styleChanged(); },row); reset.className = 'style-reset';
+    parent.append(row);
+}
+function renderStyleControls() {
+    const root = $('#style-controls'); root.replaceChildren();
+    const group = document.createElement('section'); group.className = 'style-group';
+    const selectorLabel = document.createElement('label'); selectorLabel.textContent = 'Элемент';
+    const selector = document.createElement('select'); selector.id = 'style-element';
+    for (const [key,title] of Object.entries(PROJECT_STYLE_ELEMENTS)) selector.append(new Option(title,key));
+    selector.value = selectedStyleKey; selector.addEventListener('change',() => { selectedStyleKey = selector.value; renderStyleControls(); }); selectorLabel.append(selector); group.append(selectorLabel);
+    const heading = document.createElement('h2'); heading.textContent = PROJECT_STYLE_ELEMENTS[selectedStyleKey]; group.append(heading);
+    const current = stylesDraft.typography[selectedStyleKey]; const defaults = DEFAULT_PROJECT_STYLES.typography[selectedStyleKey];
+    styleInput(group,current,'fontFamily','Font family',{choices:FONT_CHOICES,defaultValue:defaults.fontFamily});
+    styleInput(group,current,'fontSize','Font size, px',{min:8,max:96,step:1,defaultValue:defaults.fontSize});
+    styleInput(group,current,'fontWeight','Font weight',{choices:[[300,'300'],[400,'400'],[500,'500'],[600,'600'],[700,'700'],[800,'800'],[900,'900']],defaultValue:defaults.fontWeight});
+    styleInput(group,current,'italic','Italic',{check:true,defaultValue:defaults.italic});
+    styleInput(group,current,'color','Color',{color:true,defaultValue:defaults.color});
+    root.append(group);
+    const spacing = document.createElement('section'); spacing.className = 'style-group'; const spacingTitle = document.createElement('h2'); spacingTitle.textContent = 'Spacing'; spacing.append(spacingTitle);
+    for (const [key,label,min,max,step] of [
+        ['bodyLineHeight','Body line height',1,3,.05],['paragraphGap','Paragraph spacing, px',0,120,1],['blockGap','Main block gap, px',0,240,1],['headerGap','Gap after project header, px',0,240,1],['spacerUnit','Base Spacer unit, px',1,100,1]
+    ]) styleInput(spacing,stylesDraft.spacing,key,label,{min,max,step,defaultValue:DEFAULT_PROJECT_STYLES.spacing[key]});
+    root.append(spacing);
+}
+function showView(next) {
+    view = next;
+    $('#project-view').hidden = view !== 'projects'; $('#styles-view').hidden = view !== 'styles'; $('#project-sidebar').hidden = view !== 'projects';
+    $('#show-projects').classList.toggle('active',view === 'projects'); $('#show-styles').classList.toggle('active',view === 'styles');
+    if (view === 'styles') { if (!draft && data.projects[0]) { draft = clone(data.projects[0]); baseline = JSON.stringify(draft); } renderStyleControls(); }
+    updateStatus(); preview();
+}
 function mayLeave() { if (saving) { status('Дождитесь завершения сохранения.'); return false; } return !dirty() || confirm('Есть несохранённые изменения. Перейти без сохранения? Черновик текущего проекта будет заменён.'); }
 function selectProject(project) { if (!mayLeave()) return; draft = clone(project); baseline = JSON.stringify(draft); for (const block of draft.content || []) { block.id ||= uid(); } draft.content ??= []; renderForm(); persistDraft(); }
 $('#new').onclick = () => { if (!mayLeave()) return; draft = {id:uid(),title:'Новый проект',year:'',author:{type:'solo',name:'Oleksandr Hants'},projectTypes:[],roles:[],content:[]}; baseline = ''; renderForm(); persistDraft(); };
 $('#duplicate-project').onclick = () => { if (saving) return; const copy = clone(draft); renewIds(copy); copy.id = uid(); copy.title += ' — копия'; draft = copy; baseline = ''; renderForm(); persistDraft(); };
 $('#add-block').onclick = () => { const type = $('#block-type').value; const block = {id:uid(),type}; if (type === 'text') block.text = ''; if (['gallery','links','exhibitions'].includes(type)) block.items = []; if (type === 'imagePair') block.items = [{id:uid()},{id:uid()}]; if (type === 'video') block.provider = 'youtube'; if (type === 'spacer') block.size = 'medium'; draft.content.push(block); renderBlocks(); changed(); };
+$('#show-projects').onclick = () => showView('projects');
+$('#show-styles').onclick = () => showView('styles');
+$('#reset-all-styles').onclick = () => { if (!confirm('Вернуть все Project Styles к исходным значениям?')) return; stylesDraft = normalizeProjectStyles(null); renderStyleControls(); styleChanged(); };
 $('#save').onclick = async () => {
-    if (!draft || saving) return;
+    if ((view === 'projects' && !draft) || saving) return;
     saving = true; $('#save').disabled = true; status('Сохранение…');
-    const snapshot = clone(draft);
-    try { const result = await api('/api/save',{project:snapshot,revision}); data = result.data; revision = result.revision; baseline = JSON.stringify(snapshot); projectList(); persistDraft(); updateStatus(); status(dirty() ? 'Сохранено. Есть новые несохранённые изменения.' : 'Сохранено. Резервная копия создана.'); }
+    const snapshot = clone(view === 'styles' ? stylesDraft : draft);
+    try {
+        if (view === 'styles') { const result = await api('/api/styles/save',{styles:snapshot,revision:stylesRevision}); stylesDraft = normalizeProjectStyles(result.styles); stylesRevision = result.revision; stylesBaseline = JSON.stringify(stylesDraft); persistStylesDraft(); renderStyleControls(); }
+        else { const result = await api('/api/save',{project:snapshot,revision}); data = result.data; revision = result.revision; baseline = JSON.stringify(snapshot); projectList(); persistDraft(); }
+        updateStatus(); status(dirty() ? 'Сохранено. Есть новые несохранённые изменения.' : 'Сохранено. Резервная копия создана.');
+    }
     catch (e) { status(e.message,true); }
     finally { saving = false; $('#save').disabled = !dirty(); }
 };
@@ -251,10 +314,12 @@ $('#recover').onclick = async () => { try { const {names} = await api('/api/back
 $('#close-backups').onclick = () => $('#backups').close();
 $('#restore').onclick = async () => { if (!confirm('Восстановить весь список проектов? Несохранённый черновик будет закрыт.')) return; try { const result = await api('/api/restore',{name:$('#backup-list').value,revision}); data = result.data; revision = result.revision; draft = null; baseline = ''; localStorage.removeItem(DRAFT_STORAGE_KEY); $('#form').hidden = true; $('#empty').hidden = false; $('#backups').close(); projectList(); updateStatus(); status('Копия восстановлена.'); } catch(e) { status(e.message,true); } };
 window.addEventListener('preview-ready',preview);
-window.addEventListener('beforeunload',event => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } });
+window.addEventListener('beforeunload',event => { if (anyDirty()) { event.preventDefault(); event.returnValue = ''; } });
 initializePreviewLayout();
 try {
-    const [state, media] = await Promise.all([api('/api/state'),api('/api/assets')]); data = state.data; revision = state.revision; token = state.token; assets = media.files; loadVocabulary(); projectList(); status('Выберите проект');
+    const [state, media] = await Promise.all([api('/api/state'),api('/api/assets')]); data = state.data; revision = state.revision; token = state.token; assets = media.files; stylesDraft = normalizeProjectStyles(state.styles); stylesRevision = state.stylesRevision; stylesBaseline = JSON.stringify(stylesDraft); loadVocabulary(); projectList(); status('Выберите проект');
     const saved = JSON.parse(localStorage.getItem(DRAFT_STORAGE_KEY) || 'null');
     if (saved?.draft && JSON.stringify(saved.draft) !== saved.baseline && confirm('Восстановить несохранённый черновик из этого браузера?')) { draft = saved.draft; baseline = saved.baseline; if (saved.revision !== revision) { revision = saved.revision; } renderForm(); }
+    const savedStyles = JSON.parse(localStorage.getItem(STYLES_DRAFT_STORAGE_KEY) || 'null');
+    if (savedStyles?.draft && JSON.stringify(savedStyles.draft) !== savedStyles.baseline && confirm('Восстановить несохранённые Project Styles из этого браузера?')) { stylesDraft = normalizeProjectStyles(savedStyles.draft); stylesBaseline = savedStyles.baseline; stylesRevision = savedStyles.revision; preview(); }
 } catch (e) { status('Не удалось открыть редактор: ' + e.message,true); }

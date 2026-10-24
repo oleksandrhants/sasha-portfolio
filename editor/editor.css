@@ -24,6 +24,14 @@
 .rich-text-editor:focus { outline: 2px solid #222; outline-offset: -1px; }
 .rich-text-editor p { margin: 0 0 .8em; }
 .rich-text-editor p:last-child { margin-bottom: 0; }
+.view-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 12px; }
+.view-switch button { padding-inline: 5px; }
+.view-switch button.active { background: #252525; color: #fff; }
+.style-group { padding: 12px; margin: 0 0 14px; border: 1px solid #c9c9c0; background: #f3f3ef; }
+.style-group h2 { margin: 14px 0 8px; font-size: 15px; }
+.style-control-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 6px; align-items: end; }
+.style-control-row label { margin: 0; }
+.style-reset { margin-bottom: 8px; }
 .multi-value-field { position: relative; margin-bottom: 14px; }
 .multi-value-label { display: block; margin-bottom: 5px; font-size: 12px; }
 .multi-value-control { padding: 6px; border: 1px solid #c8c8c0; border-radius: 4px; background: #fff; }

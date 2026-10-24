@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "typography": {
+    "title": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 28, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "author": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 18, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "metadata": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 13, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "body": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 15, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "links": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 15, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "listText": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 13, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "imageCaption": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 12, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "photoCredit": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 12, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "videoTitle": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 15, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "videoCaption": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 12, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "materialsHeading": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 15, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "exhibitionsHeading": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 15, "fontWeight": 400, "italic": false, "color": "#252525" },
+    "exhibitionsEntry": { "fontFamily": "Arial, Helvetica, sans-serif", "fontSize": 15, "fontWeight": 400, "italic": false, "color": "#252525" }
+  },
+  "spacing": { "bodyLineHeight": 1.6, "paragraphGap": 15, "blockGap": 32, "headerGap": 32, "spacerUnit": 10 }
+}

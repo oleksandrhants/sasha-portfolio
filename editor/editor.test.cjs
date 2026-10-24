@@ -6,19 +6,20 @@ const path = require('node:path');
 const os = require('node:os');
 const { once } = require('node:events');
 const { spawn } = require('node:child_process');
-const { createEditorServer, validateProject, validateRichText } = require('./server.cjs');
+const { createEditorServer, validateProject, validateRichText, validateProjectStyles } = require('./server.cjs');
 
 test('Local editor: security, real Chrome editing, save, restart and restore', { timeout:90000 }, async t => {
     const source = path.resolve(__dirname,'..');
     const root = await fs.mkdtemp(path.join(os.tmpdir(),'portfolio-editor-test-'));
     let server, browser, socket;
     t.after(async () => { socket?.close(); browser?.kill(); if (server?.listening) { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); } /* Keep isolated fixture for inspection; never change source data. */ });
-    for (const name of ['editor','assets','data','project-data.js','project-renderer.js','rich-text.js','project.css','project.js','project.html','site-nav.js','site-nav.css','archive.html','archive.js','archive-layout.js','archive.css','archive-title.js','animated-title.js','animated-title.css','index.html','script.js','style.css']) await fs.cp(path.join(source,name),path.join(root,name),{recursive:true});
+    for (const name of ['editor','assets','data','project-data.js','project-renderer.js','rich-text.js','project-styles.js','project.css','project.js','project.html','site-nav.js','site-nav.css','archive.html','archive.js','archive-layout.js','archive.css','archive-title.js','animated-title.js','animated-title.css','index.html','script.js','style.css']) await fs.cp(path.join(source,name),path.join(root,name),{recursive:true});
     const original = await fs.readFile(path.join(root,'data/projects.json'),'utf8');
     server = await createEditorServer({root}); server.listen(0,'127.0.0.1'); await once(server,'listening');
     let base = `http://127.0.0.1:${server.address().port}`;
     let state = await (await fetch(base+'/api/state')).json();
     for (const project of state.data.projects) assert.doesNotThrow(()=>validateProject(project));
+    assert.doesNotThrow(()=>validateProjectStyles(state.styles));
     assert.throws(()=>validateRichText({version:1,paragraphs:[{runs:[{text:'unsafe',href:'javascript:alert(1)'}]}]}),/Недопустимая ссылка/);
     assert.throws(()=>validateRichText({version:1,paragraphs:[{runs:[{text:'unsafe',onclick:'alert(1)'}]}]}),/неподдерживаемое/);
     const post = (route, value, extra={}) => fetch(base+route,{method:'POST',headers:{'Content-Type':'application/json',Origin:base,'X-Editor-Token':state.token,...extra},body:JSON.stringify(value)});
@@ -27,6 +28,7 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal((await fetch(base+'/editor/server.cjs')).status,403);
     assert.equal((await fetch(base+'/api/state',{headers:{Origin:'https://example.com'}})).status,403);
     assert.equal((await post('/api/save',{project:{id:'bad',title:'Bad',content:[{id:'x',type:'image',src:'../outside.jpg'}]},revision:state.revision})).status,400);
+    assert.equal((await post('/api/styles/save',{styles:{version:1},revision:state.stylesRevision})).status,400);
     assert.equal(await fs.readFile(path.join(root,'data/projects.json'),'utf8'),original);
 
     const chrome = process.env.CHROME_PATH || 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
@@ -51,6 +53,11 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     await wait('document.querySelector("#preview").contentDocument.querySelector(".project-title")');
     assert.equal(await evaluate('document.querySelectorAll(".block").length'),state.data.projects[0].content.length);
     assert.equal(await evaluate('document.querySelector("#preview").contentDocument.querySelector(".project-gallery").style.getPropertyValue("--gallery-columns")'),'2');
+    await evaluate(`document.querySelector('#show-styles').click(); const groups=document.querySelectorAll('#style-controls .style-group'); const titleSize=groups[0].querySelector('input[type=number]'); titleSize.value='36'; titleSize.dispatchEvent(new Event('input',{bubbles:true})); const spacing=groups[1].querySelectorAll('input[type=number]'); spacing[2].value='44'; spacing[2].dispatchEvent(new Event('input',{bubbles:true}));`);
+    await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-title-size') === '36px'`);
+    assert.equal(await evaluate(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-block-gap')`),'44px');
+    await evaluate(`document.querySelector('#save').click()`); await wait(`document.querySelector('#status').textContent.includes('Резервная копия создана')`);
+    await evaluate(`document.querySelector('#show-projects').click()`);
     const splitterBox=await evaluate(`(()=>{const box=document.querySelector('#panel-splitter').getBoundingClientRect();return {x:box.x+box.width/2,y:box.y+40}})()`);
     await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:splitterBox.x,y:splitterBox.y,button:'left',clickCount:1});
     await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:splitterBox.x+80,y:splitterBox.y,button:'left',buttons:1});
@@ -104,16 +111,18 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     const savedText=created.content.find(block=>block.type==='text'); assert.equal(savedText.text,'Test artwork description'); assert.equal(savedText.richText.version,1);
     const savedGallery=created.content.find(block=>block.type==='gallery'); assert.equal(savedGallery.columns,3); assert.equal(savedGallery.gap,24);
     const savedVideo=created.content.find(block=>block.type==='video'); assert.equal(savedVideo.title,'Visible video title'); assert.equal(savedVideo.showTitle,true); assert.equal(savedVideo.caption,'Video caption');
-    const copies=await fs.readdir(path.join(root,'.editor-backups')); assert.equal(copies.length,1); assert.equal(await fs.readFile(path.join(root,'.editor-backups',copies[0]),'utf8'),original);
+    const copies=(await fs.readdir(path.join(root,'.editor-backups'))).filter(name=>name.endsWith('.json')); assert.equal(copies.length,1); assert.equal(await fs.readFile(path.join(root,'.editor-backups',copies[0]),'utf8'),original);
+    assert.equal((await fs.readdir(path.join(root,'.editor-backups','styles'))).filter(name=>name.endsWith('.json')).length,1);
     assert.equal((await post('/api/save',{project:created,revision:state.revision})).status,409);
     server.closeAllConnections(); await new Promise(resolve=>server.close(resolve));
     server=await createEditorServer({root}); server.listen(0,'127.0.0.1'); await once(server,'listening'); base=`http://127.0.0.1:${server.address().port}`;
-    state=await(await fetch(base+'/api/state')).json(); assert.equal(state.data.projects.at(-1).title,'Editor integration test');
+    state=await(await fetch(base+'/api/state')).json(); assert.equal(state.data.projects.at(-1).title,'Editor integration test'); assert.equal(state.styles.typography.title.fontSize,36); assert.equal(state.styles.spacing.blockGap,44);
     await cdp('Page.navigate',{url:base+'/editor/index.html'}); await wait('document.querySelectorAll("#projects button").length > 1');
     await evaluate('document.querySelector("#projects button:last-child").click()'); await wait('document.querySelectorAll(".block").length === 8');
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-field="projectTypes"] .multi-value-chip')].map(button=>button.textContent)`),created.projectTypes);
     await cdp('Page.navigate',{url:base+'/project.html?id='+created.id}); await wait('document.querySelector("#project-status")?.hidden');
     assert.equal(await evaluate('document.querySelector(".project-title").textContent'),'Editor integration test');
+    assert.equal(await evaluate('getComputedStyle(document.querySelector(".project-title")).fontSize'),'36px');
     assert.equal(await evaluate('document.querySelector(".project-video-title").textContent'),'Visible video title');
     await evaluate('document.querySelector(".project-image-zoom").click()'); await wait('document.querySelector(".project-lightbox").open');
     assert.equal(await evaluate('document.querySelector(".project-lightbox-credit").textContent'),'Photo: Test photographer');
@@ -125,6 +134,9 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     await evaluate(`document.querySelector('.archive-item[data-project-id=${JSON.stringify(created.id)}] .media-button').click()`); await wait('document.querySelector("#lightbox").open');
     assert.equal(await evaluate('document.querySelector("#lightbox-description").textContent'),'Archive detail');
     assert.equal(await evaluate('document.querySelector("#lightbox-credit").textContent'),'Photo: Test photographer');
+    await fs.writeFile(path.join(root,'data/project-styles.json'),'{broken json','utf8');
+    await cdp('Page.navigate',{url:base+'/project.html?id='+created.id}); await wait('document.querySelector("#project-status")?.hidden');
+    assert.equal(await evaluate('getComputedStyle(document.querySelector(".project-title")).fontSize'),'28px');
     const restore=await post('/api/restore',{name:copies[0],revision:state.revision}); assert.equal(restore.status,200); assert.deepEqual((await restore.json()).data,JSON.parse(original));
     assert.equal(await fs.readFile(path.join(source,'data/projects.json'),'utf8'),original,'Source portfolio is unchanged');
     assert.deepEqual(errors,[],'No uncaught browser errors');
