@@ -130,3 +130,36 @@ export function collectArchiveMedia(projects)
     }
     return entries;
 }
+
+// A single site-wide media collection for current and future 3D objects.
+// `preview` is preferred so homepage textures do not download zoom originals.
+export function collect3DMedia(projects)
+{
+    const entries = [];
+    for (const project of Array.isArray(projects) ? projects : [])
+    {
+        for (const block of Array.isArray(project?.content) ? project.content : [])
+        {
+            const mediaItems = ["gallery", "imagePair", "image-pair"].includes(block?.type)
+                ? (Array.isArray(block.items) ? block.items : [])
+                : block?.type === "image" ? [block] : [];
+            for (const media of mediaItems)
+            {
+                const src = media?.showIn3D === true ? mediaSource(media, "preview") : "";
+                if (src) entries.push({ project, media, src });
+            }
+        }
+    }
+    return entries;
+}
+
+export function build3DImagePool(projects, legacyPool, minimum = 4)
+{
+    const selected = collect3DMedia(projects);
+    if (!selected.length) return { images:[...legacyPool], usesLegacy:true };
+    const seen = new Set();
+    const unique = selected.flatMap(entry => seen.has(entry.src) ? [] : (seen.add(entry.src), [{ src:entry.src, size:2.8 }]));
+    const images = [...unique];
+    for (let index = 0; images.length < minimum; index++) images.push(unique[index % unique.length]);
+    return { images, usesLegacy:false };
+}

@@ -1,4 +1,5 @@
 import { TITLE_DEFAULTS, createAnimatedTitle } from "./animated-title.js";
+import { build3DImagePool, loadProjects } from "./project-data.js";
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js";
 
 // ART / INTERACTION CONTROLS — distances are multiples of the fitted wide view.
@@ -286,16 +287,18 @@ group.scale.setScalar(1.8);
 scene.add(group);
 
 const textureLoader = new THREE.TextureLoader();
-// Add images here; size is the longest side in scene units, not pixels.
-const imagePool = [
-    { file: "10.webp", size: 3.24 },
-    { file: "G3D_2.webp", size: 2.4 },
-    { file: "gr_1.webp", size: 2.9 },
-    { file: "gr_233.webp", size: 2.65 },
-    { file: "gr8_cc.webp", size: 3.1 },
-    { file: "st2.webp", size: 2.5 },
-    { file: "ZGrab02.webp", size: 2.8 }
+// This exact legacy set remains the fallback until at least one project image
+// is explicitly marked showIn3D. It is not guessed or migrated into projects.
+const legacyImagePool = [
+    { src: "assets/images/10.webp", size: 3.24 },
+    { src: "assets/images/G3D_2.webp", size: 2.4 },
+    { src: "assets/images/gr_1.webp", size: 2.9 },
+    { src: "assets/images/gr_233.webp", size: 2.65 },
+    { src: "assets/images/gr8_cc.webp", size: 3.1 },
+    { src: "assets/images/st2.webp", size: 2.5 },
+    { src: "assets/images/ZGrab02.webp", size: 2.8 }
 ];
+let imagePool = [...legacyImagePool];
 
 // Four fixed composition slots. Angles are in radians.
 const slots = [
@@ -311,7 +314,7 @@ let wideViewDistance = 7;
 // Ratios of the original wide view: start at the previous closest view.
 let zoom = CONFIG.cameraStartDistance;
 let targetZoom = zoom;
-const meanImageSize = imagePool.reduce((sum, image) => sum + image.size, 0) / imagePool.length;
+let meanImageSize = imagePool.reduce((sum, image) => sum + image.size, 0) / imagePool.length;
 
 function imageSize(image)
 {
@@ -446,10 +449,18 @@ function assignImage(plane, image)
 
 async function loadImages()
 {
-    // Cache the pool before swapping so reappearance never waits for a download.
-    await Promise.all(imagePool.map(async (image) =>
+    try
     {
-        const texture = await textureLoader.loadAsync(`assets/images/${image.file}`);
+        const resolved = build3DImagePool(await loadProjects(), legacyImagePool, slots.length);
+        imagePool = resolved.images;
+        meanImageSize = imagePool.reduce((sum, image) => sum + image.size, 0) / imagePool.length;
+        console.info(resolved.usesLegacy ? "3D objects: using legacy imagePool fallback." : "3D objects: using project images marked showIn3D.");
+    }
+    catch (error) { console.warn("Could not read showIn3D media; using legacy imagePool fallback.", error); }
+    // Cache the pool before swapping so reappearance never waits for a download.
+    await Promise.all([...new Set(imagePool)].map(async (image) =>
+    {
+        const texture = await textureLoader.loadAsync(image.src);
         texture.colorSpace = THREE.SRGBColorSpace;
         image.texture = texture;
     }));

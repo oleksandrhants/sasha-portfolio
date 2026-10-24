@@ -49,6 +49,7 @@ function validateProject(project) {
     const image = item => {
         if (!item || typeof item !== 'object' || Array.isArray(item)) throw fail('Некорректное изображение.');
         stringFields(item, ['src','preview','large','zoom','caption','alt','description','credit']);
+        for (const key of ['showInArchive','showIn3D']) if (item[key] !== undefined && typeof item[key] !== 'boolean') throw fail(`Поле ${key} должно быть логическим.`);
         for (const key of ['src','preview','large','zoom']) if (item[key]) {
             if (!/^assets\//.test(item[key]) || item[key].includes('\\') || item[key].split('/').some(p => p === '..' || p.startsWith('.')) || /[?#\x00]/.test(item[key])) throw fail('Выберите изображение внутри папки assets.');
         }

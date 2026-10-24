@@ -100,6 +100,7 @@ function imageFields(parent, image) {
     field(parent, image, 'credit', 'Photo credit · Автор фотографии');
     help(parent, 'Показывается в lightbox проекта и Archive только при заполненном значении.');
     field(parent, image, 'showInArchive', 'Показывать в архиве', { check:true });
+    field(parent, image, 'showIn3D', 'Show in 3D objects · Показывать в 3D-объектах', { check:true });
     const note = document.createElement('p'); note.className = 'hint'; note.textContent = 'Подготовьте версии в Portfolio Image Converter и поместите их в assets. Кнопка обновления списка находится в данных проекта.'; parent.append(note);
 }
 function richTextField(parent, block) {
