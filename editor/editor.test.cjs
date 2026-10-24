@@ -59,7 +59,7 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     await wait('document.querySelector("#preview").contentDocument.querySelector(".project-title")');
     assert.equal(await evaluate('document.querySelectorAll(".block").length'),state.data.projects[0].content.length);
     assert.equal(await evaluate('document.querySelector("#preview").contentDocument.querySelector(".project-gallery").style.getPropertyValue("--gallery-columns")'),'2');
-    await evaluate(`document.querySelector('#show-styles').click(); const groups=document.querySelectorAll('#style-controls .style-group'); const titleSize=groups[0].querySelector('input[type=number]'); titleSize.value='36'; titleSize.dispatchEvent(new Event('input',{bubbles:true})); const spacing=groups[1].querySelectorAll('input[type=number]'); spacing[2].value='44'; spacing[2].dispatchEvent(new Event('input',{bubbles:true}));`);
+    await evaluate(`document.querySelector('#show-styles').click(); const groups=document.querySelectorAll('#style-controls .style-group'); const titleSize=groups[0].querySelector('input[type=number]'); titleSize.value='36'; titleSize.dispatchEvent(new Event('input',{bubbles:true})); const titleWeight=groups[0].querySelectorAll('select')[2]; titleWeight.value='700'; titleWeight.dispatchEvent(new Event('input',{bubbles:true})); const spacing=groups[1].querySelectorAll('input[type=number]'); spacing[2].value='44'; spacing[2].dispatchEvent(new Event('input',{bubbles:true}));`);
     await wait(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-title-size') === '36px'`);
     assert.equal(await evaluate(`document.querySelector('#preview').contentDocument.documentElement.style.getPropertyValue('--project-block-gap')`),'44px');
     await evaluate(`document.querySelector('#save').click()`); await wait(`document.querySelector('#status').textContent.includes('Резервная копия создана')`);
@@ -132,7 +132,7 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal((await post('/api/save',{project:created,revision:state.revision})).status,409);
     server.closeAllConnections(); await new Promise(resolve=>server.close(resolve));
     server=await createEditorServer({root}); server.listen(0,'127.0.0.1'); await once(server,'listening'); base=`http://127.0.0.1:${server.address().port}`;
-    state=await(await fetch(base+'/api/state')).json(); assert.equal(state.data.projects.at(-1).title,'Editor integration test'); assert.equal(state.styles.typography.title.fontSize,36); assert.equal(state.styles.spacing.blockGap,44);
+    state=await(await fetch(base+'/api/state')).json(); assert.equal(state.data.projects.at(-1).title,'Editor integration test'); assert.equal(state.styles.typography.title.fontSize,36); assert.equal(state.styles.typography.title.fontWeight,700); assert.equal(state.styles.spacing.blockGap,44);
     await cdp('Page.navigate',{url:base+'/editor/index.html'}); await wait('document.querySelectorAll("#projects button").length > 1');
     await evaluate('document.querySelector("#projects button:last-child").click()'); await wait('document.querySelectorAll(".block").length === 8');
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-field="projectTypes"] .multi-value-chip')].map(button=>button.textContent)`),created.projectTypes);

@@ -230,7 +230,7 @@ function styleInput(parent, object, key, label, options = {}) {
     else if (options.check) input.type = 'checkbox'; else if (options.color) input.type = 'color'; else input.type = 'number';
     if (options.check) input.checked = object[key] === true; else input.value = object[key];
     if (options.min !== undefined) input.min = options.min; if (options.max !== undefined) input.max = options.max; if (options.step !== undefined) input.step = options.step;
-    input.addEventListener('input',() => { object[key] = options.check ? input.checked : options.choices || options.color ? input.value : Number(input.value); styleChanged(); });
+    input.addEventListener('input',() => { object[key] = options.check ? input.checked : options.color ? input.value : options.choices ? (options.number ? Number(input.value) : input.value) : Number(input.value); styleChanged(); });
     wrap.append(input); row.append(wrap);
     const reset = button('Reset',() => { object[key] = clone(options.defaultValue); renderStyleControls(); styleChanged(); },row); reset.className = 'style-reset';
     parent.append(row);
@@ -246,7 +246,7 @@ function renderStyleControls() {
     const current = stylesDraft.typography[selectedStyleKey]; const defaults = DEFAULT_PROJECT_STYLES.typography[selectedStyleKey];
     styleInput(group,current,'fontFamily','Font family',{choices:FONT_CHOICES,defaultValue:defaults.fontFamily});
     styleInput(group,current,'fontSize','Font size, px',{min:8,max:96,step:1,defaultValue:defaults.fontSize});
-    styleInput(group,current,'fontWeight','Font weight',{choices:[[300,'300'],[400,'400'],[500,'500'],[600,'600'],[700,'700'],[800,'800'],[900,'900']],defaultValue:defaults.fontWeight});
+    styleInput(group,current,'fontWeight','Font weight',{choices:[[300,'300'],[400,'400'],[500,'500'],[600,'600'],[700,'700'],[800,'800'],[900,'900']],number:true,defaultValue:defaults.fontWeight});
     styleInput(group,current,'italic','Italic',{check:true,defaultValue:defaults.italic});
     styleInput(group,current,'color','Color',{color:true,defaultValue:defaults.color});
     root.append(group);
