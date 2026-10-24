@@ -29,13 +29,19 @@ async function api(url, body) {
 }
 async function refreshAssets() { const media=await api('/api/assets'); assets=media.files; assetLibrary=media.assets || assets.map(path => ({path,name:path.split('/').pop(),preview:path,large:path,zoom:path})); conversionManifest=media.conversionManifest || {found:false,supported:false,paths:[]}; return media; }
 async function importImageFiles(fileList, dialog) {
-    const files=[...fileList]; if(!files.length) return;
+    const selected=[...fileList];
+    const files=selected.filter(file => /\.(?:jpe?g|png|webp|avif)$/i.test(file.name) || file.name.toLocaleLowerCase() === 'conversion-manifest.json');
+    if(!files.length) throw new Error('В выбранной папке нет поддерживаемых изображений или conversion-manifest.json.');
     for(const [index,file] of files.entries()) {
         status(`Импорт ${index+1}/${files.length}: ${file.name}…`);
         const response=await fetch('/api/assets/import',{method:'POST',headers:{'Content-Type':'application/octet-stream','X-Editor-Token':token,'X-File-Name':encodeURIComponent(file.name),'X-Relative-Path':encodeURIComponent(file.webkitRelativePath || file.name)},body:file});
         const result=await response.json(); if(!response.ok) throw new Error(result.error || `Не удалось импортировать ${file.name}`);
     }
-    await refreshAssets(); dialog.querySelector('[data-search]').dispatchEvent(new Event('input',{bubbles:true})); renderBlocks(); status(`Импортировано изображений: ${files.length}`);
+    await refreshAssets(); updateManifestMessage(dialog); dialog.querySelector('[data-search]').dispatchEvent(new Event('input',{bubbles:true})); renderBlocks();
+    const imageCount=files.filter(file=>file.name.toLocaleLowerCase() !== 'conversion-manifest.json').length;
+    const manifestCount=files.length-imageCount;
+    const skipped=selected.length-files.length;
+    status(`Импортировано изображений: ${imageCount}${manifestCount ? `; manifest: ${manifestCount}` : ''}${skipped ? `; пропущено неподдерживаемых файлов: ${skipped}` : ''}`);
 }
 function button(text, action, parent) { const element = document.createElement('button'); element.type = 'button'; element.textContent = text; element.onclick = action; parent.append(element); return element; }
 function field(parent, object, key, label, options = {}) {
@@ -103,9 +109,16 @@ function applyLibraryAsset(media, asset) {
     for (const key of ['preview','large','zoom']) if(asset[key]) media[key]=asset[key];
     if(!media.src && !media.preview && !media.large && !media.zoom) media.preview=asset.path;
 }
+function updateManifestMessage(dialog) {
+    const message=dialog.querySelector('[data-manifest]'); if(!message) return;
+    if(conversionManifest.found) {
+        const count=conversionManifest.paths?.length || 1;
+        message.textContent=`Найдено conversion-manifest.json: ${count}. Файлы сохранены вместе с импортированными наборами. Формат manifest пока не документирован, поэтому безопасное сопоставление Preview / Large / Zoom выполняется по явным суффиксам имён.`;
+    } else message.textContent='conversion-manifest.json не найден внутри assets. Import images выбирает только изображения; чтобы включить manifest, импортируйте всю исходную папку через Import folder. Обычные изображения продолжат работать через fallback.';
+}
 function ensureImageLibrary() {
     let dialog = $('#image-library'); if (dialog) return dialog;
-    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><div class="image-library-tools"><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><button type="button" data-import-files>Import images · Импортировать изображения</button><button type="button" data-import-folder>Import folder · Импортировать папку</button></div><p class="field-help" data-manifest></p><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><span data-variants></span></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
+    dialog = document.createElement('dialog'); dialog.id = 'image-library'; dialog.className = 'image-library'; dialog.innerHTML = `<div class="image-library-heading"><h2>Choose image · Выбрать изображение</h2><button type="button" data-close>Закрыть</button></div><div class="image-library-tools"><label>Поиск по имени<input type="search" data-search placeholder="Имя файла…"></label><button type="button" data-import-files>Import images · Импортировать изображения</button><button type="button" data-import-folder>Import folder · Импортировать папку</button></div><p class="image-library-message" data-manifest></p><div class="image-library-body"><div class="image-library-grid" data-grid></div><aside class="image-library-preview"><img data-preview alt=""><strong data-name>Выберите изображение</strong><span data-resolution></span><div class="image-library-variants" data-variants></div></aside></div><div class="image-library-actions"><span data-count></span><button type="button" class="primary" data-confirm disabled>Выбрать</button></div>`;
     const files=document.createElement('input'); files.type='file'; files.accept='.jpg,.jpeg,.png,.webp,.avif,image/jpeg,image/png,image/webp,image/avif'; files.multiple=true; files.hidden=true;
     const folder=files.cloneNode(); folder.removeAttribute('accept'); folder.setAttribute('webkitdirectory',''); folder.setAttribute('directory','');
     dialog.append(files,folder); dialog.querySelector('[data-import-files]').onclick=()=>files.click(); dialog.querySelector('[data-import-folder]').onclick=()=>folder.click();
@@ -114,9 +127,9 @@ function ensureImageLibrary() {
 }
 function openImageLibrary({multiple=false,onConfirm}) {
     const dialog = ensureImageLibrary(); const grid = dialog.querySelector('[data-grid]'); const search = dialog.querySelector('[data-search]'); const confirm = dialog.querySelector('[data-confirm]'); const count = dialog.querySelector('[data-count]'); const previewImage = dialog.querySelector('[data-preview]'); const name = dialog.querySelector('[data-name]'); const resolution = dialog.querySelector('[data-resolution]'); const variants = dialog.querySelector('[data-variants]');
-    dialog.querySelector('[data-manifest]').textContent = conversionManifest.found ? 'conversion-manifest.json найден, но его формат пока не распознан; используется надёжное сопоставление по суффиксам имён.' : 'conversion-manifest.json не найден; версии сопоставляются только по явным суффиксам имён.';
+    updateManifestMessage(dialog);
     const selected = new Set(); let focused = null;
-    const showPreview = asset => { focused = asset; previewImage.src = '/' + (asset.preview || asset.path); previewImage.alt = asset.name; name.textContent = asset.name; variants.textContent = `Preview: ${asset.preview ? 'yes' : 'fallback'} · Large: ${asset.large ? 'yes' : 'fallback'} · Zoom: ${asset.zoom ? 'yes' : 'fallback'}`; resolution.textContent = ''; previewImage.onload = () => { resolution.textContent = `${previewImage.naturalWidth} × ${previewImage.naturalHeight} px`; }; };
+    const showPreview = asset => { focused = asset; const fallback=asset.source || asset.path; previewImage.src = '/' + (asset.preview || fallback); previewImage.alt = asset.name; name.textContent = asset.name; variants.replaceChildren(); for(const [key,label] of [['preview','Preview'],['large','Large'],['zoom','Zoom']]) { const line=document.createElement('span'); const actual=asset[key]; line.textContent=actual ? `${label}: найден · ${actual.split('/').pop()}` : `${label}: fallback · ${fallback.split('/').pop()}`; line.dataset.variantStatus=actual ? 'found' : 'fallback'; variants.append(line); } resolution.textContent = ''; previewImage.onload = () => { resolution.textContent = `${previewImage.naturalWidth} × ${previewImage.naturalHeight} px`; }; };
     const update = () => { count.textContent = selected.size ? `Выбрано: ${selected.size}` : 'Ничего не выбрано'; confirm.disabled = !selected.size; grid.querySelectorAll('.image-library-item').forEach(tile => { const active = selected.has(tile.dataset.path); tile.classList.toggle('selected',active); tile.setAttribute('aria-pressed',String(active)); }); };
     const render = () => { const query = normalizedValue(search.value).toLocaleLowerCase(); grid.replaceChildren(); for (const asset of assetLibrary.filter(item => !query || item.name.toLocaleLowerCase().includes(query) || item.path.toLocaleLowerCase().includes(query))) { const tile = document.createElement('button'); tile.type = 'button'; tile.className = 'image-library-item'; tile.dataset.path = asset.path; tile.setAttribute('aria-pressed','false'); const img = document.createElement('img'); img.src = '/' + (asset.preview || asset.path); img.alt = ''; img.loading = 'lazy'; const caption = document.createElement('span'); caption.textContent = asset.name; tile.append(img,caption); tile.onclick = () => { if (!multiple) selected.clear(); if (multiple && selected.has(asset.path)) selected.delete(asset.path); else selected.add(asset.path); showPreview(asset); update(); }; tile.ondblclick = () => showPreview(asset); grid.append(tile); } update(); };
     search.value = ''; search.oninput = render; confirm.onclick = () => { const chosen = assetLibrary.filter(asset => selected.has(asset.path)); if (chosen.length) onConfirm(multiple ? chosen : chosen[0]); dialog.close(); };
@@ -300,16 +313,21 @@ function renderStyleControls() {
     root.append(spacing);
     const layout = document.createElement('section'); layout.className = 'style-group'; const layoutTitle = document.createElement('h2'); layoutTitle.textContent = 'Text width & Image Layout'; layout.append(layoutTitle);
     const widthRow = document.createElement('div'); widthRow.className = 'text-width-control';
+    const fullLabel = document.createElement('label'); fullLabel.className = 'check text-width-full'; fullLabel.textContent = 'Full content width';
+    const full = document.createElement('input'); full.type = 'checkbox'; full.checked = stylesDraft.layout.fullContentWidth === true; fullLabel.prepend(full);
     const enabledLabel = document.createElement('label'); enabledLabel.className = 'check'; enabledLabel.textContent = 'Use pixel Text column width';
     const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = stylesDraft.layout.textColumnWidth !== null; enabledLabel.prepend(enabled);
     const numberLabel = document.createElement('label'); numberLabel.textContent = 'Text column width, px'; const number = document.createElement('input'); number.type = 'number'; number.min = '480'; number.max = '1000'; number.step = '1'; number.value = stylesDraft.layout.textColumnWidth ?? 720; numberLabel.append(number);
     const range = document.createElement('input'); range.type = 'range'; range.min = '480'; range.max = '1000'; range.step = '1'; range.value = number.value; range.setAttribute('aria-label','Text column width slider');
     const widthReset = button('Reset to legacy 70ch',() => { stylesDraft.layout.textColumnWidth = null; renderStyleControls(); styleChanged(); },widthRow);
-    const setWidthState = () => { number.disabled = range.disabled = !enabled.checked; };
+    const setWidthState = () => { enabled.disabled = full.checked; number.disabled = range.disabled = full.checked || !enabled.checked; };
     const updateWidth = value => { const next = Math.min(1000,Math.max(480,Number(value) || 720)); stylesDraft.layout.textColumnWidth = next; number.value = range.value = String(next); enabled.checked = true; setWidthState(); styleChanged(); };
     enabled.addEventListener('input',() => { stylesDraft.layout.textColumnWidth = enabled.checked ? Number(number.value) : null; setWidthState(); styleChanged(); });
+    full.addEventListener('input',() => { stylesDraft.layout.fullContentWidth = full.checked; setWidthState(); styleChanged(); });
     number.addEventListener('input',() => updateWidth(number.value)); range.addEventListener('input',() => updateWidth(range.value));
-    widthRow.append(enabledLabel,numberLabel,range,widthReset); layout.append(widthRow); setWidthState();
+    const fullReset = button('Reset Full content width',() => { stylesDraft.layout.fullContentWidth = false; renderStyleControls(); styleChanged(); },widthRow);
+    fullReset.className = 'full-width-reset';
+    widthRow.append(fullLabel,enabledLabel,numberLabel,range,widthReset,fullReset); layout.append(widthRow); setWidthState();
     styleInput(layout,stylesDraft.layout,'verticalImageAlignment','Vertical image alignment',{choices:[['top','Top'],['center','Center'],['bottom','Bottom']],defaultValue:DEFAULT_PROJECT_STYLES.layout.verticalImageAlignment});
     styleInput(layout,stylesDraft.layout,'horizontalImageAlignment','Horizontal image alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.horizontalImageAlignment});
     styleInput(layout,stylesDraft.layout,'captionAlignment','Image caption alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.captionAlignment});

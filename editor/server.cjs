@@ -66,6 +66,7 @@ function validateProjectStyles(value) {
     if (value.layout !== undefined) {
         if (!value.layout || typeof value.layout !== 'object') throw fail('Некорректная группа Image Layout.');
         if (value.layout.textColumnWidth !== null && (!Number.isFinite(value.layout.textColumnWidth) || value.layout.textColumnWidth < 480 || value.layout.textColumnWidth > 1000)) throw fail('Ширина текстовой колонки должна быть от 480 до 1000 px или использовать исходное значение.');
+        if (value.layout.fullContentWidth !== undefined && typeof value.layout.fullContentWidth !== 'boolean') throw fail('Full content width должен быть включён или выключен.');
         if (!['top','center','bottom'].includes(value.layout.verticalImageAlignment)) throw fail('Некорректное вертикальное выравнивание изображений.');
         if (!['left','center','right'].includes(value.layout.horizontalImageAlignment)) throw fail('Некорректное горизонтальное выравнивание изображений.');
         if (!['left','center','right'].includes(value.layout.captionAlignment)) throw fail('Некорректное выравнивание подписей.');
