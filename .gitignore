@@ -1,0 +1,4 @@
+.editor-backups/
+.editor-drafts/
+data/.projects-*.tmp
+node_modules/

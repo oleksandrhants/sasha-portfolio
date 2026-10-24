@@ -1,0 +1,8 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><base href="/"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="/project.css"><title>Preview</title></head><body class="project-detail-page"><main class="project-page"><header id="project-metadata"></header><div id="project-content"></div></main><script type="module">
+import { renderProject, createProjectImageZoom } from '/project-renderer.js';
+const onImageZoom = createProjectImageZoom(document);
+window.renderDraft = project => renderProject(project, { metadataElement: document.querySelector('#project-metadata'), contentElement: document.querySelector('#project-content'), onImageZoom });
+window.parent.dispatchEvent(new Event('preview-ready'));
+document.addEventListener('click', event => { const link = event.target.closest('a'); if (link) { event.preventDefault(); } });
+</script></body></html>

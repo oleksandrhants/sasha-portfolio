@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Редактор портфолио</title><link rel="stylesheet" href="editor.css"><script type="module" src="editor.js"></script></head>
+<body>
+<header class="toolbar"><strong>Редактор портфолио</strong><span id="status" role="status">Загрузка…</span><button id="recover">Резервные копии</button><button id="save" class="primary" disabled>Save · Сохранить</button></header>
+<div class="workspace">
+<aside class="sidebar"><button id="new" class="wide">＋ Новый проект</button><nav id="projects" aria-label="Проекты"></nav><p class="hint">Изменения остаются черновиком до нажатия Save.</p><a href="/index.html" target="_blank" rel="noopener">Открыть сайт ↗</a></aside>
+<main class="editing"><div id="empty">Выберите проект слева или создайте новый.</div><div id="form" hidden><div class="section-heading"><h1>Проект</h1><button id="duplicate-project">Дублировать проект</button></div><div id="metadata"></div><div class="section-heading"><h2>Блоки страницы</h2></div><div id="blocks"></div><div class="add-bar"><select id="block-type" aria-label="Тип нового блока"><option value="text">Text · Текст</option><option value="image">Image · Изображение</option><option value="imagePair">Image pair · Два изображения</option><option value="gallery">Gallery · Галерея</option><option value="video">Video · Видео</option><option value="links">Links / Materials · Материалы</option><option value="exhibitions">Exhibitions · Выставки</option><option value="spacer">Spacer · Отступ</option></select><button id="add-block" class="primary">＋ Добавить блок</button></div></div></main>
+<section class="preview-panel" aria-label="Live Preview"><div class="preview-toolbar"><strong>Live Preview</strong><button id="desktop" aria-pressed="true">Компьютер</button><button id="mobile" aria-pressed="false">Телефон</button></div><div class="preview-scroll"><iframe id="preview" title="Предпросмотр страницы проекта" src="preview.html"></iframe></div></section>
+</div>
+<dialog id="backups"><h2>Восстановление</h2><p>Восстановление заменит весь список проектов выбранной копией. Перед этим будет создана копия текущего файла.</p><select id="backup-list" aria-label="Резервная копия"></select><div class="actions"><button id="close-backups">Закрыть</button><button id="restore">Восстановить</button></div></dialog>
+</body></html>
