@@ -68,6 +68,7 @@ function renderImage(media, project, context)
             src: zoomSource,
             alt: image.alt,
             caption: textValue(media.caption),
+            credit: textValue(media.credit),
             trigger: button
         }));
         figure.appendChild(button);
@@ -133,11 +134,19 @@ function renderVideo(block, project, context)
     const { doc } = context;
     const figure = doc.createElement("figure");
     figure.className = "project-video";
+    const title = textValue(block.title);
+    if (block.showTitle === true && title)
+    {
+        const heading = doc.createElement("h3");
+        heading.className = "project-video-title";
+        heading.textContent = title;
+        figure.appendChild(heading);
+    }
     const iframe = doc.createElement("iframe");
     iframe.src = provider === "youtube"
         ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}`
         : `https://player.vimeo.com/video/${encodeURIComponent(id)}`;
-    iframe.title = textValue(block.title) || `${textValue(project.title) || "Project"} — video`;
+    iframe.title = title || `${textValue(project.title) || "Project"} — video`;
     iframe.loading = "lazy";
     iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; fullscreen";
     iframe.allowFullscreen = true;
@@ -151,6 +160,13 @@ function renderMediaGroup(block, project, context, className, maximum)
 {
     const group = context.doc.createElement("div");
     group.className = className;
+    if (className === "project-gallery")
+    {
+        const columns = Number.isInteger(block.columns) && block.columns >= 1 && block.columns <= 3 ? block.columns : 2;
+        const gap = Number.isFinite(block.gap) ? Math.min(120, Math.max(0, block.gap)) : 16;
+        group.style.setProperty("--gallery-columns", String(columns));
+        group.style.setProperty("--gallery-gap", `${gap}px`);
+    }
     const items = Array.isArray(block.items) ? block.items.slice(0, maximum) : [];
     for (const item of items)
     {
@@ -358,7 +374,9 @@ export function createProjectImageZoom(doc = document)
     image.className = "project-lightbox-image";
     const caption = doc.createElement("p");
     caption.className = "project-lightbox-caption";
-    dialog.append(close, image, caption);
+    const credit = doc.createElement("p");
+    credit.className = "project-lightbox-credit";
+    dialog.append(close, image, caption, credit);
     doc.body.appendChild(dialog);
     let trigger = null;
     close.addEventListener("click", () => dialog.close());
@@ -367,16 +385,20 @@ export function createProjectImageZoom(doc = document)
     {
         image.removeAttribute("src");
         image.alt = "";
+        caption.textContent = "";
+        credit.textContent = "";
         trigger?.focus();
         trigger = null;
     });
-    return ({ src, alt, caption: captionText, trigger: source }) =>
+    return ({ src, alt, caption: captionText, credit: creditText, trigger: source }) =>
     {
         trigger = source || null;
         image.src = src;
         image.alt = alt || "Project image";
         caption.textContent = captionText || "";
         caption.hidden = !captionText;
+        credit.textContent = creditText ? `Photo: ${creditText}` : "";
+        credit.hidden = !creditText;
         dialog.showModal();
     };
 }

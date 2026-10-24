@@ -67,6 +67,7 @@ const lightboxContent = document.querySelector("#lightbox-content");
 const lightboxInfo = document.querySelector("#lightbox-info");
 const lightboxProjectMeta = document.querySelector("#lightbox-project-meta");
 const lightboxDescription = document.querySelector("#lightbox-description");
+const lightboxCredit = document.querySelector("#lightbox-credit");
 
 // Every entry holds the original media AND its parent project, without copying metadata.
 let archiveEntries = [];
@@ -259,8 +260,10 @@ function renderLightboxInfo({ project, media })
     const description = typeof media.description === "string" ? media.description.trim() : "";
     lightboxDescription.textContent = description;
     lightboxDescription.hidden = !description;
+    const credit = typeof media.credit === "string" ? media.credit.trim() : "";
+    lightboxCredit.textContent = credit ? `Photo: ${credit}` : "";
+    lightboxCredit.hidden = !credit;
     projectLink.href = projectUrl(project.id);
-    // media.credit is optional data reserved for future use, not project metadata.
 }
 
 function fitLightboxImage()

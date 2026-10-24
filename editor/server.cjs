@@ -31,6 +31,9 @@ function validateProject(project) {
         if (typeof block.id !== 'string' || !block.id.trim() || ids.has(block.id)) throw fail('ID блоков должны быть уникальными.');
         ids.add(block.id);
         stringFields(block, ['text','title','caption','url','provider','videoId','youtubeId','vimeoId','language','lang','size']);
+        if (block.showTitle !== undefined && typeof block.showTitle !== 'boolean') throw fail('Настройка показа названия видео должна быть логической.');
+        if (block.columns !== undefined && (!Number.isInteger(block.columns) || block.columns < 1 || block.columns > 3)) throw fail('Количество колонок галереи: 1, 2 или 3.');
+        if (block.gap !== undefined && (!Number.isFinite(block.gap) || block.gap < 0 || block.gap > 120)) throw fail('Расстояние галереи должно быть от 0 до 120 пикселей.');
         if (block.language && !['en','uk'].includes(block.language)) throw fail('Язык блока: English, Ukrainian или без языка.');
         if (block.type === 'image') image(block);
         if (['gallery','imagePair','image-pair','links','materials','exhibitions'].includes(block.type)) {
