@@ -19,11 +19,13 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     server = await createEditorServer({root}); server.listen(0,'127.0.0.1'); await once(server,'listening');
     let base = `http://127.0.0.1:${server.address().port}`;
     let state = await (await fetch(base+'/api/state')).json();
-    const { collect3DMedia, build3DImagePool } = await import(pathToFileURL(path.join(root,'project-data.js')).href+'?test='+Date.now());
-    const selectionFixture=[{id:'p',content:[{type:'image',preview:'assets/a.webp',showIn3D:true},{type:'imagePair',items:[{preview:'assets/b.webp',showIn3D:true},{preview:'assets/no.webp'}]},{type:'gallery',items:[{src:'assets/c.webp',showIn3D:true}]}]}];
+    const { collectArchiveMedia, collect3DMedia, build3DImagePool } = await import(pathToFileURL(path.join(root,'project-data.js')).href+'?test='+Date.now());
+    const selectionFixture=[{id:'p',content:[{type:'image',preview:'assets/a.webp',showIn3D:true,showInArchive:true},{type:'imagePair',items:[{preview:'assets/b.webp',showIn3D:true},{preview:'assets/no.webp'}]},{type:'gallery',items:[{src:'assets/c.webp',showIn3D:true}]},{type:'image',enabled:false,preview:'assets/hidden.webp',showIn3D:true,showInArchive:true}]}];
     assert.deepEqual(collect3DMedia(selectionFixture).map(entry=>entry.src),['assets/a.webp','assets/b.webp','assets/c.webp']);
+    assert.deepEqual(collectArchiveMedia(selectionFixture).map(entry=>entry.media.preview),['assets/a.webp']);
     const selectedPool=build3DImagePool(selectionFixture,[{src:'legacy.webp',size:2}],4); assert.equal(selectedPool.usesLegacy,false); assert.equal(selectedPool.images.length,4); assert.equal(selectedPool.images[0].src,'assets/a.webp');
     const fallbackPool=build3DImagePool([], [{src:'legacy.webp',size:2}],4); assert.equal(fallbackPool.usesLegacy,true); assert.equal(fallbackPool.images[0].src,'legacy.webp');
+    const hiddenFallbackPool=build3DImagePool([{id:'hidden',content:[{type:'image',enabled:false,preview:'assets/hidden.webp',showIn3D:true}]}],[{src:'legacy.webp',size:2}],4); assert.equal(hiddenFallbackPool.usesLegacy,true);
     for (const project of state.data.projects) assert.doesNotThrow(()=>validateProject(project));
     assert.doesNotThrow(()=>validateProjectStyles(state.styles));
     assert.throws(()=>validateRichText({version:1,paragraphs:[{runs:[{text:'unsafe',href:'javascript:alert(1)'}]}]}),/Недопустимая ссылка/);
@@ -165,12 +167,14 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal(await evaluate(`document.querySelector('#image-library [data-manifest]').textContent.includes('Найдено conversion-manifest.json: 2')`),true);
     for(const width of [1024,1280,1920]) {
         await cdp('Emulation.setDeviceMetricsOverride',{width,height:1000,deviceScaleFactor:1,mobile:false}); await wait(`innerWidth === ${width}`);
+        await wait(`(()=>{const box=document.querySelector('#image-library').getBoundingClientRect();return box.left>=0&&box.right<=innerWidth;})()`);
         const modalLayout=await evaluate(`(()=>{const dialog=document.querySelector('#image-library');const tools=dialog.querySelector('.image-library-tools').getBoundingClientRect();const message=dialog.querySelector('.image-library-message').getBoundingClientRect();const box=dialog.getBoundingClientRect();return {inside:box.left>=0&&box.right<=innerWidth,noHorizontalOverflow:dialog.scrollWidth<=dialog.clientWidth&&document.documentElement.scrollWidth<=innerWidth,messageBelowTools:message.top>=tools.bottom};})()`);
         assert.deepEqual(modalLayout,{inside:true,noHorizontalOverflow:true,messageBelowTools:true});
     }
     await cdp('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false}); await wait('innerWidth === 1440');
+    await new Promise(resolve=>setTimeout(resolve,200));
     await evaluate(`(()=>{const dialog=document.querySelector('#image-library');dialog.style.width='900px';dialog.style.height='640px';})()`);
-    await wait(`(()=>{const value=JSON.parse(localStorage.getItem('portfolio-editor-image-library-layout-v1')||'{}');return value.width>=890&&value.height>=630;})()`);
+    await wait(`(()=>{const value=JSON.parse(localStorage.getItem('portfolio-editor-image-library-layout-v1')||'{}');return Math.abs(value.width-900)<5&&Math.abs(value.height-640)<5;})()`);
     const libraryRestoreSize=await evaluate(`(()=>{const box=document.querySelector('#image-library').getBoundingClientRect();return {width:box.width,height:box.height};})()`);
     await evaluate(`document.querySelector('#image-library [data-maximize]').click()`);
     assert.equal(await evaluate(`document.querySelector('#image-library').classList.contains('maximized')`),true);
@@ -307,6 +311,10 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     await cdp('Page.navigate',{url:base+'/editor/index.html'}); await wait('document.querySelectorAll("#projects button").length > 1');
     await evaluate('document.querySelector("#projects button:last-child").click()'); await wait('document.querySelectorAll(".block").length === 8');
     assert.deepEqual(await evaluate(`[...document.querySelectorAll('[data-field="projectTypes"] .multi-value-chip')].map(button=>button.textContent)`),created.projectTypes);
+    const persistedCollapsedId=created.content[0].id; await evaluate(`document.querySelector('.block[data-id=${JSON.stringify(created.content[0].id)}] .block-collapse-toggle').click()`);
+    await cdp('Page.navigate',{url:base+'/editor/index.html'}); await wait('document.querySelectorAll("#projects button").length > 1'); await evaluate('document.querySelector("#projects button:last-child").click()'); await wait(`document.querySelector('.block[data-id=${JSON.stringify(created.content[0].id)}]')`);
+    assert.equal(await evaluate(`document.querySelector('.block[data-id=${JSON.stringify(created.content[0].id)}]').classList.contains('collapsed')`),true); assert.equal(persistedCollapsedId,created.content[0].id);
+    await evaluate(`document.querySelector('.block[data-id=${JSON.stringify(created.content[0].id)}] .block-collapse-toggle').click()`);
     await cdp('Page.navigate',{url:base+'/project.html?id='+created.id}); await wait('document.querySelector("#project-status")?.hidden');
     assert.equal(await evaluate('document.querySelector(".project-title").textContent'),'Editor integration test');
     assert.equal(await evaluate('getComputedStyle(document.querySelector(".project-title")).fontSize'),'36px');

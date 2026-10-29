@@ -25,6 +25,10 @@ property and projects whose old blocks do not yet have IDs.
 The order of `content` is the page order. Moving a block means moving that
 object in the array; no separate order field is used.
 
+Blocks are visible by default. `enabled: false` keeps the complete block in
+`content` but excludes it from the public renderer, Live Preview, Archive and
+the generated 3D media collection. Omitting `enabled` is equivalent to `true`.
+
 Every new content block must have an ID that is unique within the project. Its
 ID must stay unchanged when the block is edited or moved. A duplicated block
 must receive a new ID. The future editor should generate UUIDs rather than ask
@@ -40,9 +44,14 @@ per block and are not required to have matching translations.
   "id": "5fde1c97-7dc9-48ed-8bd4-d9d7714af808",
   "type": "text",
   "language": "uk",
+  "blockWidth": { "mode": "custom", "value": 720 },
   "text": "Окремий український текстовий блок."
 }
 ```
+
+Text, links/materials and exhibitions accept an optional `blockWidth` object.
+Its `mode` is `global`, `custom` or `full`; `custom` requires `value` from 240
+to 1600 pixels. Missing settings inherit Project Styles.
 
 ## Images
 
@@ -60,7 +69,7 @@ Image fields are direct properties of an image block or a gallery/pair item.
   "description": "Optional archive description.",
   "credit": "Photo: Example Name",
   "showInArchive": true,
-  "showInBush": true
+  "showIn3D": true
 }
 ```
 
@@ -99,6 +108,12 @@ move media reliably inside a group.
 {
   "id": "gallery-1",
   "type": "gallery",
+  "gallerySpacing": {
+    "mode": "custom",
+    "horizontal": 16,
+    "vertical": 28,
+    "linked": false
+  },
   "items": [
     { "id": "gallery-a", "preview": "a-small.webp", "large": "a.webp", "zoom": "a-zoom.webp" },
     { "id": "gallery-b", "preview": "b-small.webp", "large": "b.webp", "zoom": "b-zoom.webp" }
@@ -107,6 +122,14 @@ move media reliably inside a group.
 ```
 
 For pair or gallery images, `showInArchive` belongs to the individual item.
+Gallery spacing can use `mode: "global"` or the custom fields shown above.
+The old numeric `gap` remains valid and applies the same value on both axes.
+When neither setting is present, the gallery inherits global Project Styles.
+
+Global Gallery spacing is stored in `data/project-styles.json` as
+`layout.gallerySpacing` with `horizontal`, `vertical` and `linked`. Existing
+`textColumnWidth` and `fullContentWidth` remain the compatible global width
+settings for all text-based blocks.
 
 ## Video
 
