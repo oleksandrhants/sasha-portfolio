@@ -14,7 +14,7 @@ export const DEFAULT_PROJECT_STYLES = {
         exhibitionsHeading:type(15), exhibitionsEntry:type(15)
     },
     spacing:{ bodyLineHeight:1.6, paragraphGap:15, blockGap:32, headerGap:32, spacerUnit:10 },
-    layout:{ textColumnWidth:null, fullContentWidth:false, verticalImageAlignment:"top", horizontalImageAlignment:"left", captionAlignment:"left", imageCaptionGap:10 }
+    layout:{ textColumnWidth:null, fullContentWidth:false, verticalImageAlignment:"top", horizontalImageAlignment:"left", captionAlignment:"left", imageCaptionGap:10, gallerySpacing:{horizontal:16,vertical:16,linked:true} }
 };
 
 const FAMILIES = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif"]);
@@ -48,6 +48,11 @@ export function normalizeProjectStyles(value)
     if (["left","center","right"].includes(layout.horizontalImageAlignment)) result.layout.horizontalImageAlignment = layout.horizontalImageAlignment;
     if (["left","center","right"].includes(layout.captionAlignment)) result.layout.captionAlignment = layout.captionAlignment;
     result.layout.imageCaptionGap = clamp(layout.imageCaptionGap, 0, 60, result.layout.imageCaptionGap);
+    const gallerySpacing=layout.gallerySpacing || {};
+    result.layout.gallerySpacing.horizontal=clamp(gallerySpacing.horizontal,0,120,result.layout.gallerySpacing.horizontal);
+    result.layout.gallerySpacing.vertical=clamp(gallerySpacing.vertical,0,120,result.layout.gallerySpacing.vertical);
+    if(typeof gallerySpacing.linked === "boolean") result.layout.gallerySpacing.linked=gallerySpacing.linked;
+    if(result.layout.gallerySpacing.linked) result.layout.gallerySpacing.vertical=result.layout.gallerySpacing.horizontal;
     return result;
 }
 
@@ -87,5 +92,7 @@ export function applyProjectStyles(value, doc = document)
     root.style.setProperty("--project-image-horizontal-align", ({left:"flex-start",center:"center",right:"flex-end"})[styles.layout.horizontalImageAlignment]);
     root.style.setProperty("--project-caption-align", styles.layout.captionAlignment);
     root.style.setProperty("--project-image-caption-gap", `${styles.layout.imageCaptionGap}px`);
+    root.style.setProperty("--project-gallery-horizontal-gap", `${styles.layout.gallerySpacing.horizontal}px`);
+    root.style.setProperty("--project-gallery-vertical-gap", `${styles.layout.gallerySpacing.vertical}px`);
     return styles;
 }

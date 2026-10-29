@@ -182,9 +182,22 @@ function renderMediaGroup(block, project, context, className, maximum)
     if (className === "project-gallery")
     {
         const columns = Number.isInteger(block.columns) && block.columns >= 1 && block.columns <= 3 ? block.columns : 2;
-        const gap = Number.isFinite(block.gap) ? Math.min(120, Math.max(0, block.gap)) : 16;
         group.style.setProperty("--gallery-columns", String(columns));
-        group.style.setProperty("--gallery-gap", `${gap}px`);
+        if (block.gallerySpacing?.mode === "custom")
+        {
+            const horizontal = Number.isFinite(block.gallerySpacing.horizontal) ? Math.min(120, Math.max(0, block.gallerySpacing.horizontal)) : 16;
+            const verticalSource = block.gallerySpacing.linked === true ? horizontal : block.gallerySpacing.vertical;
+            const vertical = Number.isFinite(verticalSource) ? Math.min(120, Math.max(0, verticalSource)) : horizontal;
+            group.style.setProperty("--gallery-column-gap", `${horizontal}px`);
+            group.style.setProperty("--gallery-row-gap", `${vertical}px`);
+        }
+        else if (Number.isFinite(block.gap))
+        {
+            const legacyGap = Math.min(120, Math.max(0, block.gap));
+            group.style.setProperty("--gallery-column-gap", `${legacyGap}px`);
+            group.style.setProperty("--gallery-row-gap", `${legacyGap}px`);
+            group.style.setProperty("--gallery-gap", `${legacyGap}px`);
+        }
     }
     const items = Array.isArray(block.items) ? block.items.slice(0, maximum) : [];
     for (const item of items)

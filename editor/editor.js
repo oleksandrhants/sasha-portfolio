@@ -335,6 +335,20 @@ function blockWidthControls(parent, block) {
     width.addEventListener('input',()=>{block.blockWidth={mode:'custom',value:Math.min(1600,Math.max(240,Number(width.value)||720))};effective.textContent=`Применяется ${block.blockWidth.value} px.`;changed();});
     updateState(); parent.append(root);
 }
+function gallerySpacingControls(parent, block) {
+    const root=document.createElement('div'); root.className='gallery-spacing-control'; const title=document.createElement('strong'); title.textContent='Gallery spacing'; root.append(title);
+    const legacy=!block.gallerySpacing && Number.isFinite(block.gap); const source=block.gallerySpacing?.mode==='custom' ? block.gallerySpacing : legacy ? {mode:'custom',horizontal:block.gap,vertical:block.gap,linked:true} : {mode:'global',...stylesDraft.layout.gallerySpacing};
+    const label=(text,control)=>{const wrap=document.createElement('label');wrap.textContent=text;wrap.append(control);root.append(wrap);return wrap;};
+    const mode=document.createElement('select');mode.append(new Option('Use global Gallery spacing','global'),new Option('Custom Gallery spacing','custom'));mode.value=source.mode;label('Режим',mode);
+    const horizontal=document.createElement('input');horizontal.type='number';horizontal.min='0';horizontal.max='120';horizontal.step='1';horizontal.value=String(source.horizontal);label('Horizontal gap, px',horizontal);
+    const vertical=document.createElement('input');vertical.type='number';vertical.min='0';vertical.max='120';vertical.step='1';vertical.value=String(source.vertical);label('Vertical gap, px',vertical);
+    const same=document.createElement('input');same.type='checkbox';same.checked=source.linked===true;const sameLabel=label('Same horizontal and vertical gap',same);sameLabel.className='check gallery-gap-linked';
+    const note=document.createElement('p');note.className='field-help';note.textContent=legacy?'Legacy gap сохранён как одинаковый горизонтальный и вертикальный отступ, пока вы не измените режим.':'Глобальные значения изменяются в Project Styles.';root.append(note);
+    const value=input=>Math.min(120,Math.max(0,Number(input.value)||0));
+    const updateState=()=>{const custom=mode.value==='custom';horizontal.disabled=vertical.disabled=same.disabled=!custom;vertical.disabled=!custom||same.checked;};
+    const commit=()=>{if(mode.value==='global'){block.gallerySpacing={mode:'global',horizontal:value(horizontal),vertical:value(vertical),linked:same.checked};delete block.gap;}else{if(same.checked)vertical.value=horizontal.value;block.gallerySpacing={mode:'custom',horizontal:value(horizontal),vertical:value(vertical),linked:same.checked};delete block.gap;}updateState();changed();};
+    mode.addEventListener('input',commit);horizontal.addEventListener('input',commit);vertical.addEventListener('input',commit);same.addEventListener('input',commit);updateState();parent.append(root);
+}
 function renderBlocks() {
     $('#blocks').replaceChildren();
     const ui=projectUi(); const filter=ui.blockFilter; $('#block-filter').value=filter; $('#block-filter-note').textContent=filter === 'all' ? '' : 'Перетаскивание и изменение порядка доступны только в режиме All blocks.';
@@ -364,7 +378,7 @@ function renderBlocks() {
         else if (['gallery','imagePair','image-pair'].includes(block.type)) {
             if (block.type === 'gallery') {
                 const columns = field(body,block,'columns','Колонки на компьютере',{ choices:[['1','1'],['2','2'],['3','3']], number:true }); columns.value = String(Number.isInteger(block.columns) ? block.columns : 2);
-                const gap = field(body,block,'gap','Расстояние между изображениями, px',{ number:true, min:0, max:120, step:1 }); gap.value = String(Number.isFinite(block.gap) ? block.gap : 16);
+                gallerySpacingControls(body,block);
                 help(body, 'На экранах до 600 px галерея автоматически становится одноколоночной. Изображения сохраняют исходные пропорции.');
             }
             itemsForm(body,block,'image');
@@ -467,6 +481,15 @@ function renderStyleControls() {
     styleInput(layout,stylesDraft.layout,'captionAlignment','Image caption alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.captionAlignment});
     styleInput(layout,stylesDraft.layout,'imageCaptionGap','Image caption gap, px',{min:0,max:60,step:1,defaultValue:DEFAULT_PROJECT_STYLES.layout.imageCaptionGap});
     root.append(layout);
+    const gallery=document.createElement('section');gallery.className='style-group gallery-spacing-styles';const galleryTitle=document.createElement('h2');galleryTitle.textContent='Gallery spacing';gallery.append(galleryTitle);
+    const galleryGrid=document.createElement('div');galleryGrid.className='gallery-spacing-grid';const gallerySettings=stylesDraft.layout.gallerySpacing;
+    const globalGapInput=(key,labelText)=>{const wrap=document.createElement('label');wrap.textContent=labelText;const input=document.createElement('input');input.type='number';input.min='0';input.max='120';input.step='1';input.value=String(gallerySettings[key]);wrap.append(input);galleryGrid.append(wrap);return input;};
+    const horizontalGap=globalGapInput('horizontal','Horizontal gap, px');const verticalGap=globalGapInput('vertical','Vertical gap, px');const linkedLabel=document.createElement('label');linkedLabel.className='check gallery-gap-linked';linkedLabel.textContent='Same horizontal and vertical gap';const linked=document.createElement('input');linked.type='checkbox';linked.checked=gallerySettings.linked;linkedLabel.prepend(linked);galleryGrid.append(linkedLabel);
+    const updateGalleryState=()=>{verticalGap.disabled=linked.checked;};const clampGap=input=>Math.min(120,Math.max(0,Number(input.value)||0));
+    horizontalGap.addEventListener('input',()=>{gallerySettings.horizontal=clampGap(horizontalGap);if(linked.checked){gallerySettings.vertical=gallerySettings.horizontal;verticalGap.value=horizontalGap.value;}styleChanged();});
+    verticalGap.addEventListener('input',()=>{gallerySettings.vertical=clampGap(verticalGap);styleChanged();});
+    linked.addEventListener('input',()=>{gallerySettings.linked=linked.checked;if(linked.checked){gallerySettings.vertical=gallerySettings.horizontal;verticalGap.value=horizontalGap.value;}updateGalleryState();styleChanged();});
+    const resetGallery=button('Reset Gallery spacing',()=>{stylesDraft.layout.gallerySpacing=clone(DEFAULT_PROJECT_STYLES.layout.gallerySpacing);renderStyleControls();styleChanged();},galleryGrid);resetGallery.className='gallery-spacing-reset';gallery.append(galleryGrid);root.append(gallery);updateGalleryState();
 }
 function showView(next) {
     view = next;

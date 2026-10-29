@@ -21,7 +21,7 @@ figcaption { margin-top: 8px; text-align: var(--project-caption-align, left); fo
 .project-gallery, .project-image-pair { display: grid; align-items: stretch; }
 .project-gallery > .project-image, .project-image-pair > .project-image { display: grid; grid-row: span 2; grid-template-rows: subgrid; align-self: stretch; }
 .project-gallery > .project-image > .project-image-frame, .project-image-pair > .project-image > .project-image-frame { align-self: var(--project-image-vertical-align, start); }
-.project-gallery { grid-template-columns: repeat(var(--gallery-columns, 2), minmax(0, 1fr)); gap: var(--gallery-gap, 16px); }
+.project-gallery { grid-template-columns: repeat(var(--gallery-columns, 2), minmax(0, 1fr)); column-gap: var(--gallery-column-gap, var(--gallery-gap, var(--project-gallery-horizontal-gap, 16px))); row-gap: var(--gallery-row-gap, var(--gallery-gap, var(--project-gallery-vertical-gap, 16px))); }
 .project-image-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .project-image-zoom { display: block; width: 100%; padding: 0; border: 0; background: transparent; color: inherit; cursor: zoom-in; }
 .project-image-zoom:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }

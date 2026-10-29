@@ -129,6 +129,13 @@
 .block-width-control > strong, .block-width-control > .block-width-effective { grid-column: 1 / -1; }
 .block-width-control label { margin: 0; }
 .block-width-control > .block-width-effective { margin: 0; }
+.gallery-spacing-control { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; align-items: end; padding: 10px; margin: 0 0 14px; border: 1px solid #deded7; border-radius: 5px; background: #f8f8f5; }
+.gallery-spacing-control > strong, .gallery-spacing-control > .field-help, .gallery-spacing-control > .gallery-gap-linked { grid-column: 1 / -1; }
+.gallery-spacing-control label, .gallery-spacing-control > .field-help { margin: 0; }
+.gallery-spacing-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; align-items: end; }
+.gallery-spacing-grid label { margin: 0; }
+.gallery-spacing-grid .gallery-gap-linked { grid-column: 1 / -1; }
+.gallery-spacing-reset { justify-self: start; }
 .image-library { position: fixed; inset: 0; margin: auto; resize: both; min-width: min(620px,calc(100vw - 24px)); min-height: min(480px,calc(100dvh - 24px)); }
 .image-library.maximized { resize: none; }
 .image-library-window-actions { display: flex; gap: 6px; flex: 0 0 auto; }
