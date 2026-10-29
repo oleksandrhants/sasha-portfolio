@@ -46,6 +46,9 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal((await importRaw('Converter Output/conversion-manifest.json',Buffer.from('{"unknownFormat":true}'))).status,201);
     assert.equal((await importRaw('Another Set/conversion-manifest.json',Buffer.from('{"anotherUnknownFormat":true}'))).status,201);
     const groupedState=await(await fetch(base+'/api/assets')).json(); const artAssets=groupedState.assets.filter(asset=>asset.name==='art.webp'); assert.equal(artAssets.length,1); assert.deepEqual(artAssets[0].variants,['preview','large','zoom']); assert.equal(groupedState.conversionManifest.found,true); assert.equal(groupedState.conversionManifest.supported,false); assert.equal(groupedState.conversionManifest.paths.length,2);
+    assert.equal(groupedState.assets.find(asset=>asset.path===firstImport.path).dateSource,'imported');
+    assert.equal(groupedState.assets.find(asset=>asset.path==='assets/images/st2.webp').dateSource,'modified');
+    assert.ok(JSON.parse(await fs.readFile(path.join(root,'.editor-library-metadata.json'),'utf8'))[firstImport.path].importedAt);
     assert.equal(groupAssetFiles(['assets/set/work-preview.webp','assets/set/work-large.webp','assets/set/work-zoom.webp']).length,1);
     assert.equal(await fs.readFile(path.join(root,'data/projects.json'),'utf8'),original);
 
@@ -168,6 +171,22 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
     assert.equal(await evaluate(`document.querySelector('#image-library [data-manifest]').textContent.includes('Найдено conversion-manifest.json: 3')`),true);
     await evaluate(`(()=>{const search=document.querySelector('#image-library [data-search]');search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
     assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length >= 11`),true);
+    await evaluate(`(()=>{const dialog=document.querySelector('#image-library');const search=dialog.querySelector('[data-search]');const usage=dialog.querySelector('[data-usage-filter]');search.value=${JSON.stringify(firstImport.path)};usage.value='unused';usage.dispatchEvent(new Event('change',{bubbles:true}));search.dispatchEvent(new Event('input',{bubbles:true}));dialog.querySelector('.image-library-item').click();})()`);
+    assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length`),1);
+    assert.equal(await evaluate(`document.querySelector('#image-library .image-library-item').dataset.usageStatus`),'unused');
+    assert.equal(await evaluate(`document.querySelector('#image-library [data-date]').textContent.startsWith('Imported:')`),true);
+    await evaluate(`document.querySelector('#image-library [data-confirm]').click()`);
+    assert.equal(await evaluate(`document.querySelectorAll('.block')[1].querySelector('.image-picker-summary img').getAttribute('src')`),'/'+firstImport.path);
+    await evaluate(`document.querySelectorAll('.block')[1].querySelector('.choose-image').click();(()=>{const dialog=document.querySelector('#image-library');const search=dialog.querySelector('[data-search]');search.value=${JSON.stringify(firstImport.path)};search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    assert.equal(await evaluate(`document.querySelector('#image-library .image-library-item').dataset.usageStatus`),'draft');
+    await evaluate(`(()=>{const dialog=document.querySelector('#image-library');const usage=dialog.querySelector('[data-usage-filter]');usage.value='current';usage.dispatchEvent(new Event('change',{bubbles:true}));dialog.querySelector('.image-library-item').click();})()`);
+    assert.equal(await evaluate(`document.querySelector('#image-library [data-usage]').textContent.includes('Draft')`),true);
+    await evaluate(`document.querySelector('#image-library [data-close]').click(); document.querySelectorAll('.block')[1].querySelector('.block-visibility').click(); document.querySelectorAll('.block')[1].querySelector('.choose-image').click();(()=>{const dialog=document.querySelector('#image-library');const search=dialog.querySelector('[data-search]');search.value=${JSON.stringify(firstImport.path)};search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
+    assert.equal(await evaluate(`document.querySelector('#image-library .image-library-item').dataset.usageStatus`),'hidden');
+    await evaluate(`document.querySelector('#image-library [data-close]').click(); document.querySelectorAll('.block')[1].querySelector('.block-visibility').click();`);
+    await evaluate(`document.querySelectorAll('.block')[1].querySelector('.choose-image').click();(()=>{const dialog=document.querySelector('#image-library');dialog.querySelector('[data-search]').value='';const sort=dialog.querySelector('[data-sort]');sort.value='name-asc';sort.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+    assert.equal(await evaluate(`(()=>{const names=[...document.querySelectorAll('#image-library .image-library-name')].map(item=>item.textContent);return names.every((name,index)=>index===0||names[index-1].localeCompare(name)<=0);})()`),true);
+    await evaluate(`document.querySelector('#image-library [data-close]').click(); document.querySelectorAll('.block')[1].querySelector('.choose-image').click()`);
     await evaluate(`(()=>{const search=document.querySelector('#image-library [data-search]');search.value='assets/images/10.webp';search.dispatchEvent(new Event('input',{bubbles:true}));})()`);
     assert.equal(await evaluate(`document.querySelectorAll('#image-library .image-library-item').length`),1);
     await evaluate(`document.querySelector('#image-library .image-library-item').click()`); await wait(`document.querySelector('#image-library [data-resolution]').textContent.includes('×')`);

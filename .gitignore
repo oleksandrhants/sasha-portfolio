@@ -1,5 +1,7 @@
 .editor-backups/
 .editor-drafts/
+.editor-library-metadata.json
+.editor-library-metadata-*.tmp
 data/.projects-*.tmp
 data/.project-styles-*.tmp
 node_modules/

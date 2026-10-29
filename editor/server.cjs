@@ -29,13 +29,14 @@ function safeImportParts(relative) {
     });
 }
 
-function groupAssetFiles(files) {
+function groupAssetFiles(files, fileMetadata = {}) {
     const sorted=[...files].sort((a,b)=>a.localeCompare(b)); const groups=new Map(); const explicitKeys=new Set();
     const details=assetPath=>{ const parsed=path.posix.parse(assetPath); const match=parsed.name.match(/^(.*?)[-_.](preview|large|zoom)$/i); return {parsed,base:match?.[1] || parsed.name,variant:match?.[2]?.toLowerCase() || '',key:`${parsed.dir}/${(match?.[1] || parsed.name).toLocaleLowerCase()}`}; };
+    const dated=(asset,paths)=>{ const imported=paths.map(item=>fileMetadata[item]?.importedAt).filter(Boolean).sort(); const modified=paths.map(item=>fileMetadata[item]?.modifiedAt).filter(Boolean).sort(); if(imported.length){asset.importedAt=imported[0];asset.dateSource='imported';} else if(modified.length){asset.importedAt=modified.at(-1);asset.dateSource='modified';} return asset; };
     for(const file of sorted){ const item=details(file); if(item.variant) explicitKeys.add(item.key); }
     const standalone=[];
-    for(const file of sorted){ const item=details(file); if(!item.variant && !explicitKeys.has(item.key)){ standalone.push({path:file,name:item.parsed.base,variants:['source']}); continue; } const group=groups.get(item.key) || {base:item.base,dir:item.parsed.dir,extension:item.parsed.ext,source:'',preview:'',large:'',zoom:''}; if(item.variant){ if(!group[item.variant]) group[item.variant]=file; } else if(!group.source) group.source=file; groups.set(item.key,group); }
-    const grouped=[...groups.values()].map(group=>{ const pathValue=group.preview || group.source || group.large || group.zoom; const asset={path:pathValue,name:`${group.base}${group.extension}`,variants:[]}; for(const key of ['preview','large','zoom']) if(group[key]){asset[key]=group[key];asset.variants.push(key);} if(group.source){asset.source=group.source;asset.variants.push('source');} return asset; });
+    for(const file of sorted){ const item=details(file); if(!item.variant && !explicitKeys.has(item.key)){ standalone.push(dated({path:file,name:item.parsed.base,variants:['source']},[file])); continue; } const group=groups.get(item.key) || {base:item.base,dir:item.parsed.dir,extension:item.parsed.ext,source:'',preview:'',large:'',zoom:''}; if(item.variant){ if(!group[item.variant]) group[item.variant]=file; } else if(!group.source) group.source=file; groups.set(item.key,group); }
+    const grouped=[...groups.values()].map(group=>{ const pathValue=group.preview || group.source || group.large || group.zoom; const asset={path:pathValue,name:`${group.base}${group.extension}`,variants:[]}; const paths=[]; for(const key of ['preview','large','zoom']) if(group[key]){asset[key]=group[key];asset.variants.push(key);paths.push(group[key]);} if(group.source){asset.source=group.source;asset.variants.push('source');paths.push(group.source);} return dated(asset,paths); });
     return [...standalone,...grouped].sort((a,b)=>a.name.localeCompare(b.name) || a.path.localeCompare(b.path));
 }
 
@@ -140,6 +141,7 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
     const backupDir = path.join(root, '.editor-backups');
     const stylesBackupDir = path.join(backupDir, 'styles');
     const importDir = path.join(root, 'assets', 'imported');
+    const libraryMetadataFile = path.join(root, '.editor-library-metadata.json');
     const token = randomBytes(32).toString('hex');
     let saving = false;
     const inside = file => file.startsWith(root + path.sep);
@@ -184,6 +186,13 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
         try { await handle.writeFile(bytes); await handle.sync(); await handle.close(); await fs.rename(temp,stylesFile); }
         catch (error) { await handle.close().catch(()=>{}); await fs.unlink(temp).catch(()=>{}); throw error; }
     }
+    async function readLibraryMetadata() { try { const value=JSON.parse(await fs.readFile(libraryMetadataFile,'utf8')); return value && typeof value === 'object' ? value : {}; } catch(error) { if(error.code === 'ENOENT' || error instanceof SyntaxError) return {}; throw error; } }
+    async function recordImport(assetPath) {
+        const metadata=await readLibraryMetadata(); metadata[assetPath]={importedAt:new Date().toISOString()};
+        const temp=path.join(root,`.editor-library-metadata-${randomBytes(8).toString('hex')}.tmp`);
+        await fs.writeFile(temp,JSON.stringify(metadata,null,2)+'\n',{flag:'wx'});
+        try { await fs.rename(temp,libraryMetadataFile); } catch(error) { await fs.unlink(temp).catch(()=>{}); throw error; }
+    }
     async function importAsset(relative, bytes) {
         const parts = safeImportParts(relative); const extension = path.extname(parts.at(-1)).toLowerCase();
         const isManifest=parts.at(-1).toLowerCase() === 'conversion-manifest.json';
@@ -197,7 +206,7 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
         await fs.mkdir(folder,{recursive:true});
         const parsed = path.parse(parts.at(-1)); let candidate = path.join(folder,parts.at(-1)); let suffix = 2;
         while (true) { try { const handle=await fs.open(candidate,'wx'); try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); } break; } catch(error) { if(error.code !== 'EEXIST') throw error; candidate=path.join(folder,`${parsed.name}-${suffix++}${parsed.ext}`); } }
-        return path.relative(root,candidate).split(path.sep).join('/');
+        const imported=path.relative(root,candidate).split(path.sep).join('/'); await recordImport(imported); return imported;
     }
     const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.webp':'image/webp', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.avif':'image/avif' };
     const server = http.createServer(async (req, res) => {
@@ -211,9 +220,9 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
                 if (req.headers['sec-fetch-site'] === 'cross-site') throw fail('Доступ запрещён.', 403);
                 if (req.method === 'GET' && url.pathname === '/api/state') { const current = await readData(); const styles = await readStyles(); return send(200, { data:current.data, revision:current.revision, styles:styles.data, stylesRevision:styles.revision, token }); }
                 if (req.method === 'GET' && url.pathname === '/api/assets') {
-                    const files = []; const manifests=[];
-                    async function walk(dir) { for (const entry of await fs.readdir(dir, { withFileTypes:true })) { if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue; const file = path.join(dir, entry.name); if (entry.isDirectory()) await walk(file); else if (/\.(webp|png|jpe?g|avif|gif)$/i.test(entry.name)) files.push(path.relative(root, file).split(path.sep).join('/')); else if(entry.name.toLowerCase()==='conversion-manifest.json') manifests.push(path.relative(root,file).split(path.sep).join('/')); } }
-                    await walk(await safePath('assets')); return send(200, { files, assets:groupAssetFiles(files), conversionManifest:{found:manifests.length>0,supported:false,paths:manifests} });
+                    const files = []; const manifests=[]; const fileMetadata={}; const importedMetadata=await readLibraryMetadata();
+                    async function walk(dir) { for (const entry of await fs.readdir(dir, { withFileTypes:true })) { if (entry.name.startsWith('.') || entry.isSymbolicLink()) continue; const file = path.join(dir, entry.name); if (entry.isDirectory()) await walk(file); else if (/\.(webp|png|jpe?g|avif|gif)$/i.test(entry.name)){ const relative=path.relative(root,file).split(path.sep).join('/'); const stat=await fs.stat(file); files.push(relative); fileMetadata[relative]={...importedMetadata[relative],modifiedAt:stat.mtime.toISOString()}; } else if(entry.name.toLowerCase()==='conversion-manifest.json') manifests.push(path.relative(root,file).split(path.sep).join('/')); } }
+                    await walk(await safePath('assets')); return send(200, { files, assets:groupAssetFiles(files,fileMetadata), conversionManifest:{found:manifests.length>0,supported:false,paths:manifests} });
                 }
                 if (req.method === 'GET' && url.pathname === '/api/backups') { let names = []; try { await safePath('.editor-backups'); names = (await fs.readdir(backupDir)).filter(x => /^[\w.-]+\.json$/.test(x)).sort().reverse(); } catch (e) { if (e.code !== 'ENOENT') throw e; } return send(200, { names }); }
                 if (req.method === 'POST' && url.pathname === '/api/assets/import') {
