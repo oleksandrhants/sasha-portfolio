@@ -116,7 +116,7 @@ export function collectArchiveMedia(projects)
     {
         for (const block of Array.isArray(project.content) ? project.content : [])
         {
-            if (!block) continue;
+            if (!block || block.enabled === false) continue;
             if (["gallery", "imagePair", "image-pair"].includes(block.type))
             {
                 for (const media of Array.isArray(block.items) ? block.items : [])
@@ -140,6 +140,7 @@ export function collect3DMedia(projects)
     {
         for (const block of Array.isArray(project?.content) ? project.content : [])
         {
+            if (block?.enabled === false) continue;
             const mediaItems = ["gallery", "imagePair", "image-pair"].includes(block?.type)
                 ? (Array.isArray(block.items) ? block.items : [])
                 : block?.type === "image" ? [block] : [];

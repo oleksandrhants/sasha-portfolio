@@ -9,9 +9,11 @@ const DRAFT_STORAGE_KEY = 'portfolio-editor-draft-v1';
 const VOCABULARY_STORAGE_KEY = 'portfolio-editor-vocabulary-v1';
 const SPLIT_STORAGE_KEY = 'portfolio-editor-split-v1';
 const STYLES_DRAFT_STORAGE_KEY = 'portfolio-editor-styles-draft-v1';
+const EDITOR_UI_STORAGE_KEY = 'portfolio-editor-ui-v2';
 let data, revision, token, assets = [], assetLibrary = [], conversionManifest = {found:false,supported:false,paths:[]}, draft = null, baseline = '', saving = false, dragged = null;
 let stylesDraft = normalizeProjectStyles(null), stylesBaseline = '', stylesRevision = 'missing', view = 'projects';
 let vocabulary = { projectTypes:[], roles:[] };
+let editorUi = loadEditorUi();
 const projectDirty = () => draft && JSON.stringify(draft) !== baseline;
 const stylesDirty = () => JSON.stringify(stylesDraft) !== stylesBaseline;
 const dirty = () => view === 'styles' ? stylesDirty() : projectDirty();
@@ -23,6 +25,20 @@ let previewTimer;
 function changed() { clearTimeout(previewTimer); previewTimer = setTimeout(preview, 160); updateStatus(); persistDraft(); const selected = $('#projects button.active'); if (selected) selected.textContent = draft.title || 'Без названия'; }
 function persistDraft() { try { if (draft) localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify({ draft, baseline, revision })); } catch { /* Save remains available if browser storage is full. */ } }
 function persistStylesDraft() { try { localStorage.setItem(STYLES_DRAFT_STORAGE_KEY, JSON.stringify({ draft:stylesDraft, baseline:stylesBaseline, revision:stylesRevision })); } catch { /* Saving to disk remains available. */ } }
+function loadEditorUi() { try { const value = JSON.parse(localStorage.getItem(EDITOR_UI_STORAGE_KEY) || '{}'); return value && typeof value === 'object' ? value : {}; } catch { return {}; } }
+function persistEditorUi() { try { localStorage.setItem(EDITOR_UI_STORAGE_KEY, JSON.stringify(editorUi)); } catch { /* Interface preferences are optional. */ } }
+function projectUi() {
+    if (!draft?.id) return { collapsedBlocks:[], collapsedGalleryItems:{}, blockFilter:'all' };
+    const current = editorUi[draft.id] && typeof editorUi[draft.id] === 'object' ? editorUi[draft.id] : {};
+    current.collapsedBlocks = Array.isArray(current.collapsedBlocks) ? current.collapsedBlocks : [];
+    current.collapsedGalleryItems = current.collapsedGalleryItems && typeof current.collapsedGalleryItems === 'object' ? current.collapsedGalleryItems : {};
+    current.blockFilter = ['all','active','hidden','text','images','other'].includes(current.blockFilter) ? current.blockFilter : 'all';
+    editorUi[draft.id] = current;
+    return current;
+}
+function setCollapsedBlock(blockId, collapsed) { const ui=projectUi(); const values=new Set(ui.collapsedBlocks); collapsed ? values.add(blockId) : values.delete(blockId); ui.collapsedBlocks=[...values]; persistEditorUi(); }
+function galleryItemKey(block, item, index) { return typeof item?.id === 'string' && item.id ? item.id : mediaPath(item) ? `media:${mediaPath(item)}` : `index:${index}`; }
+function setCollapsedGalleryItem(block, key, collapsed) { const ui=projectUi(); const values=new Set(ui.collapsedGalleryItems[block.id] || []); collapsed ? values.add(key) : values.delete(key); ui.collapsedGalleryItems[block.id]=[...values]; persistEditorUi(); }
 async function api(url, body) {
     const response = await fetch(url, body ? { method:'POST', headers:{'Content-Type':'application/json','X-Editor-Token':token}, body:JSON.stringify(body) } : {});
     const result = await response.json(); if (!response.ok) throw new Error(result.error || 'Ошибка сервера'); return result;
@@ -185,16 +201,31 @@ function richTextField(parent, block) {
 }
 function itemsForm(parent, block, kind) {
     block.items ??= [];
+    const collapsible = kind === 'image' && block.type === 'gallery';
+    if (collapsible) {
+        const controls=document.createElement('div'); controls.className='gallery-item-controls';
+        button('Collapse all images',() => { projectUi().collapsedGalleryItems[block.id]=block.items.map((item,index)=>galleryItemKey(block,item,index)); persistEditorUi(); renderBlocks(); },controls);
+        button('Expand all images',() => { projectUi().collapsedGalleryItems[block.id]=[]; persistEditorUi(); renderBlocks(); },controls);
+        parent.append(controls);
+    }
     const list = document.createElement('div'); parent.append(list);
     block.items.forEach((item, index) => {
         const row = document.createElement('div'); row.className = 'item'; list.append(row);
-        const heading = document.createElement('div'); heading.className = 'item-heading'; heading.textContent = `${kind === 'image' ? 'Изображение' : 'Запись'} ${index + 1}`; row.append(heading);
+        const key=galleryItemKey(block,item,index); const collapsed=collapsible && (projectUi().collapsedGalleryItems[block.id] || []).includes(key); row.classList.toggle('collapsed',collapsed); row.dataset.itemKey=key;
+        const heading = document.createElement('div'); heading.className = 'item-heading';
+        const summary=document.createElement('div'); summary.className='item-summary';
+        if (collapsible) { const thumb=document.createElement('img'); thumb.className='item-thumbnail'; thumb.alt=''; const source=mediaPath(item); if(source) thumb.src='/'+source; else thumb.hidden=true; summary.append(thumb); }
+        const summaryText=document.createElement('span'); const file=mediaPath(item).split('/').pop(); summaryText.textContent=`${kind === 'image' ? 'Изображение' : 'Запись'} ${index + 1}${file ? ` · ${file}` : ''}`; summary.append(summaryText);
+        if (collapsible && (item.showInArchive || item.showIn3D)) { const state=document.createElement('small'); state.textContent=[item.showInArchive&&'Archive',item.showIn3D&&'3D'].filter(Boolean).join(' · '); summary.append(state); }
+        heading.append(summary); row.append(heading);
         const actions = document.createElement('div'); actions.className = 'actions'; heading.append(actions);
         const up = button('↑', () => { [block.items[index-1],block.items[index]] = [block.items[index],block.items[index-1]]; renderBlocks(); changed(); }, actions); up.disabled = index === 0;
         const down = button('↓', () => { [block.items[index+1],block.items[index]] = [block.items[index],block.items[index+1]]; renderBlocks(); changed(); }, actions); down.disabled = index === block.items.length-1;
         if (!['imagePair','image-pair'].includes(block.type)) button('Удалить', () => { if (confirm('Удалить запись? Файл изображения останется на диске.')) { block.items.splice(index,1); renderBlocks(); changed(); } }, actions);
-        if (kind === 'image') imageFields(row, item);
-        else { for (const [key, label] of kind === 'links' ? [['title','Название'],['url','Ссылка'],['description','Описание']] : [['date','Дата или период'],['year','Год'],['title','Название выставки'],['venue','Площадка'],['city','Город'],['country','Страна'],['url','Ссылка'],['description','Описание']]) field(row, item, key, label); }
+        if (collapsible) { const toggle=button(collapsed ? 'Раскрыть' : 'Свернуть',() => { setCollapsedGalleryItem(block,key,!collapsed); renderBlocks(); },actions); toggle.className='item-collapse-toggle'; toggle.setAttribute('aria-expanded',String(!collapsed)); }
+        const body=document.createElement('div'); body.className='item-body'; body.hidden=collapsed; row.append(body);
+        if (kind === 'image') imageFields(body, item);
+        else { for (const [fieldKey, label] of kind === 'links' ? [['title','Название'],['url','Ссылка'],['description','Описание']] : [['date','Дата или период'],['year','Год'],['title','Название выставки'],['venue','Площадка'],['city','Город'],['country','Страна'],['url','Ссылка'],['description','Описание']]) field(body, item, fieldKey, label); }
     });
     if (!['imagePair','image-pair'].includes(block.type)) {
         if (kind === 'image' && block.type === 'gallery') button('＋ Из библиотеки',() => openImageLibrary({multiple:true,onConfirm:selected => { for(const asset of selected){ const item={id:uid()}; applyLibraryAsset(item,asset); block.items.push(item); } renderBlocks(); changed(); }}),parent);
@@ -203,54 +234,78 @@ function itemsForm(parent, block, kind) {
 }
 function move(index, delta) { const target = index + delta; if (target < 0 || target >= draft.content.length) return; [draft.content[index],draft.content[target]] = [draft.content[target],draft.content[index]]; renderBlocks(); changed(); }
 function renewIds(object) { if (!object || typeof object !== 'object') return; if ('id' in object) object.id = uid(); if (Array.isArray(object.items)) object.items.forEach(renewIds); }
+function blockSummary(block) {
+    if (block.type === 'text') return ({en:'English',uk:'Ukrainian'})[block.language || block.lang] || richTextToPlain(block.richText) || block.text || 'Text';
+    if (block.type === 'image') return mediaPath(block).split('/').pop() || 'No image';
+    if (['gallery','imagePair','image-pair'].includes(block.type)) return `${block.items?.length || 0} image${block.items?.length === 1 ? '' : 's'}`;
+    if (['video','youtube','vimeo'].includes(block.type)) return block.provider === 'vimeo' || block.type === 'vimeo' ? 'Vimeo' : 'YouTube';
+    if (['links','materials','exhibitions'].includes(block.type)) return `${block.items?.length || 0} entr${block.items?.length === 1 ? 'y' : 'ies'}`;
+    if (block.type === 'spacer') return Number.isFinite(block.units) ? `${block.units} units` : block.size || 'Spacer';
+    return '';
+}
+function blockMatchesFilter(block, filter) {
+    if (filter === 'all') return true;
+    if (filter === 'active') return block.enabled !== false;
+    if (filter === 'hidden') return block.enabled === false;
+    if (filter === 'text') return block.type === 'text';
+    if (filter === 'images') return ['image','imagePair','image-pair','gallery'].includes(block.type);
+    return !['text','image','imagePair','image-pair','gallery'].includes(block.type);
+}
 function renderBlocks() {
     $('#blocks').replaceChildren();
+    const ui=projectUi(); const filter=ui.blockFilter; $('#block-filter').value=filter; $('#block-filter-note').textContent=filter === 'all' ? '' : 'Перетаскивание и изменение порядка доступны только в режиме All blocks.';
     draft.content.forEach((block, index) => {
+        if (!blockMatchesFilter(block,filter)) return;
+        const collapsed=ui.collapsedBlocks.includes(block.id);
         const card = document.createElement('section'); card.className = 'block'; card.dataset.id = block.id;
-        const header = document.createElement('header'); const title = document.createElement('strong'); title.textContent = `${index + 1}. ${labels[block.type] || block.type}`; header.append(title); card.append(header);
+        card.classList.toggle('collapsed',collapsed); card.classList.toggle('inactive',block.enabled === false);
+        const header = document.createElement('header'); const titleWrap=document.createElement('div'); titleWrap.className='block-summary'; const title = document.createElement('strong'); title.textContent = `${index + 1}. ${labels[block.type] || block.type}`; const description=document.createElement('span'); description.textContent=blockSummary(block); description.title=description.textContent; titleWrap.append(title,description); if(block.enabled === false){ const badge=document.createElement('small'); badge.className='hidden-badge'; badge.textContent='Hidden'; titleWrap.append(badge); } header.append(titleWrap); card.append(header);
         const actions = document.createElement('div'); actions.className = 'actions'; header.append(actions);
         const handle = button('⋮⋮', () => {}, actions); handle.className = 'drag-handle'; handle.draggable = true; handle.title = 'Перетащить блок';
-        handle.addEventListener('dragstart', event => { dragged = block.id; event.dataTransfer.setData('text/plain', block.id); event.dataTransfer.effectAllowed = 'move'; });
+        handle.disabled=filter !== 'all'; handle.addEventListener('dragstart', event => { if(filter !== 'all'){event.preventDefault();return;} dragged = block.id; event.dataTransfer.setData('text/plain', block.id); event.dataTransfer.effectAllowed = 'move'; });
         handle.addEventListener('dragend', () => { dragged = null; document.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over')); });
         card.addEventListener('dragover', event => { if (dragged) { event.preventDefault(); card.classList.add('drag-over'); } });
         card.addEventListener('dragleave', () => card.classList.remove('drag-over'));
         card.addEventListener('drop', event => { event.preventDefault(); const from = draft.content.findIndex(b => b.id === dragged); if (from >= 0 && from !== index) { const [item] = draft.content.splice(from,1); draft.content.splice(index,0,item); renderBlocks(); changed(); } dragged = null; card.classList.remove('drag-over'); });
-        button('↑', () => move(index,-1), actions).disabled = index === 0;
-        button('↓', () => move(index,1), actions).disabled = index === draft.content.length-1;
+        button('↑', () => move(index,-1), actions).disabled = filter !== 'all' || index === 0;
+        button('↓', () => move(index,1), actions).disabled = filter !== 'all' || index === draft.content.length-1;
         button('Копия', () => { const copy = clone(block); renewIds(copy); copy.id = uid(); draft.content.splice(index+1,0,copy); renderBlocks(); changed(); }, actions);
         button('Удалить', () => { if (confirm('Удалить блок? Изображения на диске будут сохранены.')) { draft.content.splice(index,1); renderBlocks(); changed(); } }, actions);
-        if (block.type === 'text') { const language = field(card, block, 'language','Язык', { choices:[['','Не указан'],['en','English'],['uk','Ukrainian']] }); language.value = block.language || block.lang || ''; language.addEventListener('input', () => { delete block.lang; changed(); }); richTextField(card,block); }
-        else if (block.type === 'image') imageFields(card,block);
+        const visible=block.enabled !== false; const visibility=button(visible ? '◉ Visible' : '◌ Hidden',() => { if(visible) block.enabled=false; else delete block.enabled; renderBlocks(); changed(); },actions); visibility.className='block-visibility'; visibility.title=visible ? 'Скрыть блок на странице' : 'Показать блок на странице'; visibility.setAttribute('aria-pressed',String(!visible));
+        const collapse=button(collapsed ? 'Раскрыть' : 'Свернуть',() => { setCollapsedBlock(block.id,!collapsed); renderBlocks(); },actions); collapse.className='block-collapse-toggle'; collapse.setAttribute('aria-expanded',String(!collapsed));
+        const body=document.createElement('div'); body.className='block-body'; body.hidden=collapsed; card.append(body);
+        if (block.type === 'text') { const language = field(body, block, 'language','Язык', { choices:[['','Не указан'],['en','English'],['uk','Ukrainian']] }); language.value = block.language || block.lang || ''; language.addEventListener('input', () => { delete block.lang; changed(); }); richTextField(body,block); }
+        else if (block.type === 'image') imageFields(body,block);
         else if (['gallery','imagePair','image-pair'].includes(block.type)) {
             if (block.type === 'gallery') {
-                const columns = field(card,block,'columns','Колонки на компьютере',{ choices:[['1','1'],['2','2'],['3','3']], number:true }); columns.value = String(Number.isInteger(block.columns) ? block.columns : 2);
-                const gap = field(card,block,'gap','Расстояние между изображениями, px',{ number:true, min:0, max:120, step:1 }); gap.value = String(Number.isFinite(block.gap) ? block.gap : 16);
-                help(card, 'На экранах до 600 px галерея автоматически становится одноколоночной. Изображения сохраняют исходные пропорции.');
+                const columns = field(body,block,'columns','Колонки на компьютере',{ choices:[['1','1'],['2','2'],['3','3']], number:true }); columns.value = String(Number.isInteger(block.columns) ? block.columns : 2);
+                const gap = field(body,block,'gap','Расстояние между изображениями, px',{ number:true, min:0, max:120, step:1 }); gap.value = String(Number.isFinite(block.gap) ? block.gap : 16);
+                help(body, 'На экранах до 600 px галерея автоматически становится одноколоночной. Изображения сохраняют исходные пропорции.');
             }
-            itemsForm(card,block,'image');
+            itemsForm(body,block,'image');
         }
-        else if (['links','materials','exhibitions'].includes(block.type)) { field(card,block,'title','Заголовок списка'); itemsForm(card,block,block.type === 'exhibitions' ? 'exhibitions' : 'links'); }
+        else if (['links','materials','exhibitions'].includes(block.type)) { field(body,block,'title','Заголовок списка'); itemsForm(body,block,block.type === 'exhibitions' ? 'exhibitions' : 'links'); }
         else if (['video','youtube','vimeo'].includes(block.type)) {
-            const provider = field(card,block,'provider','Платформа',{ choices:[['youtube','YouTube'],['vimeo','Vimeo']] });
+            const provider = field(body,block,'provider','Платформа',{ choices:[['youtube','YouTube'],['vimeo','Vimeo']] });
             provider.value = block.provider || (block.type === 'vimeo' || block.vimeoId ? 'vimeo' : 'youtube');
-            field(card,block,'url','Ссылка на видео'); field(card,block,block.youtubeId ? 'youtubeId' : block.vimeoId ? 'vimeoId' : 'videoId','ID видео (если не указана ссылка)');
-            field(card,block,'title','Название видео');
-            help(card, 'Название всегда используется как доступное имя видеоплеера. На странице оно видно только при включённой настройке ниже.');
-            field(card,block,'showTitle','Показывать название видео на странице',{ check:true });
-            field(card,block,'caption','Подпись под видео');
+            field(body,block,'url','Ссылка на видео'); field(body,block,block.youtubeId ? 'youtubeId' : block.vimeoId ? 'vimeoId' : 'videoId','ID видео (если не указана ссылка)');
+            field(body,block,'title','Название видео');
+            help(body, 'Название всегда используется как доступное имя видеоплеера. На странице оно видно только при включённой настройке ниже.');
+            field(body,block,'showTitle','Показывать название видео на странице',{ check:true });
+            field(body,block,'caption','Подпись под видео');
         } else if (block.type === 'spacer') {
             if (Number.isFinite(block.units)) {
-                const input = field(card,block,'units','Множитель базового отступа',{number:true,min:0,max:20,step:.1});
+                const input = field(body,block,'units','Множитель базового отступа',{number:true,min:0,max:20,step:.1});
                 const calculated = document.createElement('p'); calculated.className = 'field-help spacer-calculation';
                 const update = () => { calculated.textContent = `Рассчитанная высота: ${(Math.min(20,Math.max(0,Number(input.value) || 0)) * stylesDraft.spacing.spacerUnit).toFixed(1).replace(/\.0$/,'')} px`; };
-                input.addEventListener('input',update); update(); card.append(calculated);
+                input.addEventListener('input',update); update(); body.append(calculated);
             } else {
-                field(card,block,'size','Старый размер отступа',{ choices:[['small','Небольшой · 16 px'],['medium','Средний · 40 px'],['large','Большой · 80 px']] });
-                help(card,'Legacy Spacer сохраняет прежний фиксированный размер и не зависит от глобальной единицы.');
-                button('Преобразовать в числовой Spacer',() => { const pixels={small:16,medium:40,large:80}[block.size] || 40; block.units=Number((pixels/stylesDraft.spacing.spacerUnit).toFixed(2)); delete block.size; renderBlocks(); changed(); },card);
+                field(body,block,'size','Старый размер отступа',{ choices:[['small','Небольшой · 16 px'],['medium','Средний · 40 px'],['large','Большой · 80 px']] });
+                help(body,'Legacy Spacer сохраняет прежний фиксированный размер и не зависит от глобальной единицы.');
+                button('Преобразовать в числовой Spacer',() => { const pixels={small:16,medium:40,large:80}[block.size] || 40; block.units=Number((pixels/stylesDraft.spacing.spacerUnit).toFixed(2)); delete block.size; renderBlocks(); changed(); },body);
             }
         }
-        else { const warning = document.createElement('p'); warning.textContent = 'Этот блок пока не редактируется. Данные сохранятся.'; card.append(warning); }
+        else { const warning = document.createElement('p'); warning.textContent = 'Этот блок пока не редактируется. Данные сохранятся.'; body.append(warning); }
         $('#blocks').append(card);
     });
 }
@@ -346,7 +401,10 @@ function mayLeave() { if (saving) { status('Дождитесь завершен�
 function selectProject(project) { if (!mayLeave()) return; draft = clone(project); baseline = JSON.stringify(draft); for (const block of draft.content || []) { block.id ||= uid(); } draft.content ??= []; renderForm(); persistDraft(); }
 $('#new').onclick = () => { if (!mayLeave()) return; draft = {id:uid(),title:'Новый проект',year:'',author:{type:'solo',name:'Oleksandr Hants'},projectTypes:[],roles:[],content:[]}; baseline = ''; renderForm(); persistDraft(); };
 $('#duplicate-project').onclick = () => { if (saving) return; const copy = clone(draft); renewIds(copy); copy.id = uid(); copy.title += ' — копия'; draft = copy; baseline = ''; renderForm(); persistDraft(); };
-$('#add-block').onclick = () => { const type = $('#block-type').value; const block = {id:uid(),type}; if (type === 'text') block.text = ''; if (['gallery','links','exhibitions'].includes(type)) block.items = []; if (type === 'imagePair') block.items = [{id:uid()},{id:uid()}]; if (type === 'video') block.provider = 'youtube'; if (type === 'spacer') block.units = 4; draft.content.push(block); renderBlocks(); changed(); };
+$('#add-block').onclick = () => { const type = $('#block-type').value; const block = {id:uid(),type}; if (type === 'text') block.text = ''; if (['gallery','links','exhibitions'].includes(type)) block.items = []; if (type === 'imagePair') block.items = [{id:uid()},{id:uid()}]; if (type === 'video') block.provider = 'youtube'; if (type === 'spacer') block.units = 4; draft.content.push(block); projectUi().blockFilter='all'; persistEditorUi(); renderBlocks(); changed(); };
+$('#block-filter').addEventListener('change',() => { projectUi().blockFilter=$('#block-filter').value; persistEditorUi(); renderBlocks(); });
+$('#collapse-all-blocks').onclick=() => { projectUi().collapsedBlocks=draft.content.map(block=>block.id); persistEditorUi(); renderBlocks(); };
+$('#expand-all-blocks').onclick=() => { projectUi().collapsedBlocks=[]; persistEditorUi(); renderBlocks(); };
 $('#show-projects').onclick = () => showView('projects');
 $('#show-styles').onclick = () => showView('styles');
 $('#reset-all-styles').onclick = () => { if (!confirm('Вернуть все Project Styles к исходным значениям?')) return; stylesDraft = normalizeProjectStyles(null); renderStyleControls(); styleChanged(); };

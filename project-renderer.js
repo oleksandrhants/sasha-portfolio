@@ -380,7 +380,7 @@ export function renderProject(project, options)
     content.replaceChildren();
     for (const block of Array.isArray(project.content) ? project.content : [])
     {
-        if (!block || typeof block !== "object" || !Object.hasOwn(blockRenderers, block.type)) continue;
+        if (!block || typeof block !== "object" || block.enabled === false || !Object.hasOwn(blockRenderers, block.type)) continue;
         const element = blockRenderers[block.type](block, project, context);
         if (!element) continue;
         element.classList.add("project-block", `project-block-${block.type}`);

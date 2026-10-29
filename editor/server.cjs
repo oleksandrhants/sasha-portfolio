@@ -98,6 +98,7 @@ function validateProject(project) {
         if (!block || typeof block !== 'object' || !types.has(block.type)) throw fail('Неизвестный тип блока.');
         if (typeof block.id !== 'string' || !block.id.trim() || ids.has(block.id)) throw fail('ID блоков должны быть уникальными.');
         ids.add(block.id);
+        if (block.enabled !== undefined && typeof block.enabled !== 'boolean') throw fail('Состояние блока enabled должно быть логическим.');
         stringFields(block, ['text','title','caption','url','provider','videoId','youtubeId','vimeoId','language','lang','size']);
         if (block.richText !== undefined) validateRichText(block.richText);
         if (block.showTitle !== undefined && typeof block.showTitle !== 'boolean') throw fail('Настройка показа названия видео должна быть логической.');
