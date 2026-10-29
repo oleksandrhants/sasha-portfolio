@@ -5,7 +5,8 @@ body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Hel
 #project-metadata .project-title { line-height: 1.2; margin: 0 0 12px; text-transform: none; font-family: var(--project-title-family, Arial, Helvetica, sans-serif); font-size: var(--project-title-size, 28px); font-weight: var(--project-title-weight, 400); font-style: var(--project-title-style, normal); color: var(--project-title-color, #252525); }
 #project-metadata p { margin: 4px 0; font-family: var(--project-metadata-family, Arial, Helvetica, sans-serif); font-size: var(--project-metadata-size, 13px); font-weight: var(--project-metadata-weight, 400); font-style: var(--project-metadata-style, normal); color: var(--project-metadata-color, #252525); }
 #project-content { display: grid; gap: var(--project-block-gap, 32px); margin-top: var(--project-header-gap, 32px); }
-.project-text { width: 100%; max-width: min(100%, var(--project-text-column-width, 70ch)); margin: 0; }
+.project-text { margin: 0; }
+.project-text-based-block { width: 100%; max-width: min(100%, var(--project-block-text-width, var(--project-text-column-width, 70ch))); }
 .project-text p { margin: 0 0 var(--project-paragraph-gap, 15px); white-space: pre-wrap; font-family: var(--project-body-family, Arial, Helvetica, sans-serif); font-size: var(--project-body-size, 15px); font-weight: var(--project-body-weight, 400); font-style: var(--project-body-style, normal); line-height: var(--project-body-line-height, 1.6); color: var(--project-body-color, #252525); }
 .project-text p:last-child { margin-bottom: 0; }
 .project-text a, .project-list-block a { font-family: var(--project-links-family, Arial, Helvetica, sans-serif); font-size: var(--project-links-size, 15px); font-weight: var(--project-links-weight, 400); font-style: var(--project-links-style, normal); color: var(--project-links-color, #252525); }
@@ -27,7 +28,7 @@ figcaption { margin-top: 8px; text-align: var(--project-caption-align, left); fo
 .project-video iframe { display: block; width: 100%; aspect-ratio: 16 / 9; border: 0; }
 .project-video-title { margin: 0 0 10px; font-family: var(--project-videoTitle-family, Arial, Helvetica, sans-serif); font-size: var(--project-videoTitle-size, 15px); font-weight: var(--project-videoTitle-weight, 400); font-style: var(--project-videoTitle-style, normal); color: var(--project-videoTitle-color, #252525); }
 .project-video figcaption { margin-top: 8px; font-family: var(--project-videoCaption-family, Arial, Helvetica, sans-serif); font-size: var(--project-videoCaption-size, 12px); font-weight: var(--project-videoCaption-weight, 400); font-style: var(--project-videoCaption-style, normal); color: var(--project-videoCaption-color, #252525); }
-.project-list-block { max-width: 70ch; }
+.project-list-block { min-width: 0; }
 .project-list-block h3 { margin: 0 0 12px; font-family: var(--project-materialsHeading-family, Arial, Helvetica, sans-serif); font-size: var(--project-materialsHeading-size, 15px); font-weight: var(--project-materialsHeading-weight, 400); font-style: var(--project-materialsHeading-style, normal); color: var(--project-materialsHeading-color, #252525); }
 .project-exhibitions h3 { font-family: var(--project-exhibitionsHeading-family, Arial, Helvetica, sans-serif); font-size: var(--project-exhibitionsHeading-size, 15px); font-weight: var(--project-exhibitionsHeading-weight, 400); font-style: var(--project-exhibitionsHeading-style, normal); color: var(--project-exhibitionsHeading-color, #252525); }
 .project-list-block ul { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }

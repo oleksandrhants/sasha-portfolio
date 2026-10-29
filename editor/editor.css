@@ -125,7 +125,11 @@
 .image-usage-reference:first-of-type { border-top: 0; }
 .image-usage-project { width: 100%; padding: 2px 4px; border: 0; background: transparent; text-align: left; text-decoration: underline; overflow-wrap: anywhere; }
 .image-usage-reference span { color: #68685d; font-size: 11px; overflow-wrap: anywhere; }
-.image-library { resize: both; min-width: min(620px,calc(100vw - 24px)); min-height: min(480px,calc(100dvh - 24px)); }
+.block-width-control { display: grid; grid-template-columns: minmax(0,1fr) minmax(130px,.7fr); gap: 8px; align-items: end; padding: 10px; margin: 0 0 14px; border: 1px solid #deded7; border-radius: 5px; background: #f8f8f5; }
+.block-width-control > strong, .block-width-control > .block-width-effective { grid-column: 1 / -1; }
+.block-width-control label { margin: 0; }
+.block-width-control > .block-width-effective { margin: 0; }
+.image-library { position: fixed; inset: 0; margin: auto; resize: both; min-width: min(620px,calc(100vw - 24px)); min-height: min(480px,calc(100dvh - 24px)); }
 .image-library.maximized { resize: none; }
 .image-library-window-actions { display: flex; gap: 6px; flex: 0 0 auto; }
 .image-library-body { grid-template-columns: minmax(220px,var(--image-library-grid-width,1fr)) 10px minmax(220px,1fr); gap: 0; }

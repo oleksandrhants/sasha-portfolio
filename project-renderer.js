@@ -3,6 +3,7 @@ import { renderRichText } from "./rich-text.js";
 
 const VALID_LANGUAGES = new Set(["en", "uk"]);
 const VALID_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+const TEXT_BLOCK_TYPES = new Set(["text", "links", "materials", "exhibitions"]);
 
 function textValue(value)
 {
@@ -384,6 +385,12 @@ export function renderProject(project, options)
         const element = blockRenderers[block.type](block, project, context);
         if (!element) continue;
         element.classList.add("project-block", `project-block-${block.type}`);
+        if (TEXT_BLOCK_TYPES.has(block.type))
+        {
+            element.classList.add("project-text-based-block");
+            if (block.blockWidth?.mode === "full") element.style.setProperty("--project-block-text-width", "100%");
+            else if (block.blockWidth?.mode === "custom" && Number.isFinite(block.blockWidth.value)) element.style.setProperty("--project-block-text-width", `${Math.min(1600, Math.max(240, block.blockWidth.value))}px`);
+        }
         if (typeof block.id === "string" && block.id.trim()) element.dataset.blockId = block.id.trim();
         setLanguage(element, block.language || block.lang);
         content.appendChild(element);

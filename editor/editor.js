@@ -322,6 +322,19 @@ function blockMatchesFilter(block, filter) {
     if (filter === 'images') return ['image','imagePair','image-pair','gallery'].includes(block.type);
     return !['text','image','imagePair','image-pair','gallery'].includes(block.type);
 }
+function globalTextWidthLabel() { return stylesDraft.layout.fullContentWidth ? 'Full content width' : stylesDraft.layout.textColumnWidth === null ? 'Legacy 70ch' : `${stylesDraft.layout.textColumnWidth} px`; }
+function blockWidthControls(parent, block) {
+    if(!['text','links','materials','exhibitions'].includes(block.type)) return;
+    const root=document.createElement('div'); root.className='block-width-control'; const title=document.createElement('strong'); title.textContent='Block width'; root.append(title);
+    const modeValue=['global','custom','full'].includes(block.blockWidth?.mode) ? block.blockWidth.mode : 'global';
+    const modeObject={mode:modeValue}; const mode=field(root,modeObject,'mode','Режим ширины',{choices:[['global','Use global settings'],['custom','Custom width'],['full','Full content width']]});
+    const widthObject={value:Number.isFinite(block.blockWidth?.value)?block.blockWidth.value:720}; const width=field(root,widthObject,'value','Custom width, px',{number:true,min:240,max:1600,step:1});
+    const effective=document.createElement('p'); effective.className='field-help block-width-effective'; root.append(effective);
+    const updateState=()=>{width.disabled=mode.value!=='custom';effective.textContent=mode.value==='global'?`Применяется глобально: ${globalTextWidthLabel()}`:mode.value==='full'?'Применяется вся ширина контейнера.':`Применяется ${Math.min(1600,Math.max(240,Number(width.value)||720))} px.`;};
+    mode.addEventListener('input',()=>{block.blockWidth={mode:mode.value,value:Math.min(1600,Math.max(240,Number(width.value)||720))};updateState();changed();});
+    width.addEventListener('input',()=>{block.blockWidth={mode:'custom',value:Math.min(1600,Math.max(240,Number(width.value)||720))};effective.textContent=`Применяется ${block.blockWidth.value} px.`;changed();});
+    updateState(); parent.append(root);
+}
 function renderBlocks() {
     $('#blocks').replaceChildren();
     const ui=projectUi(); const filter=ui.blockFilter; $('#block-filter').value=filter; $('#block-filter-note').textContent=filter === 'all' ? '' : 'Перетаскивание и изменение порядка доступны только в режиме All blocks.';
@@ -345,6 +358,7 @@ function renderBlocks() {
         const visible=block.enabled !== false; const visibility=button(visible ? '◉ Visible' : '◌ Hidden',() => { if(visible) block.enabled=false; else delete block.enabled; renderBlocks(); changed(); },actions); visibility.className='block-visibility'; visibility.title=visible ? 'Скрыть блок на странице' : 'Показать блок на странице'; visibility.setAttribute('aria-pressed',String(!visible));
         const collapse=button(collapsed ? 'Раскрыть' : 'Свернуть',() => { setCollapsedBlock(block.id,!collapsed); renderBlocks(); },actions); collapse.className='block-collapse-toggle'; collapse.setAttribute('aria-expanded',String(!collapsed));
         const body=document.createElement('div'); body.className='block-body'; body.hidden=collapsed; card.append(body);
+        blockWidthControls(body,block);
         if (block.type === 'text') { const language = field(body, block, 'language','Язык', { choices:[['','Не указан'],['en','English'],['uk','Ukrainian']] }); language.value = block.language || block.lang || ''; language.addEventListener('input', () => { delete block.lang; changed(); }); richTextField(body,block); }
         else if (block.type === 'image') imageFields(body,block);
         else if (['gallery','imagePair','image-pair'].includes(block.type)) {
@@ -437,23 +451,17 @@ function renderStyleControls() {
         ['bodyLineHeight','Body line height',1,3,.05],['paragraphGap','Paragraph spacing, px',0,120,1],['blockGap','Main block gap, px',0,240,1],['headerGap','Gap after project header, px',0,240,1],['spacerUnit','Base Spacer unit, px',1,100,1]
     ]) styleInput(spacing,stylesDraft.spacing,key,label,{min,max,step,defaultValue:DEFAULT_PROJECT_STYLES.spacing[key]});
     root.append(spacing);
-    const layout = document.createElement('section'); layout.className = 'style-group'; const layoutTitle = document.createElement('h2'); layoutTitle.textContent = 'Text width & Image Layout'; layout.append(layoutTitle);
+    const layout = document.createElement('section'); layout.className = 'style-group'; const layoutTitle = document.createElement('h2'); layoutTitle.textContent = 'Text-based blocks width & Image Layout'; layout.append(layoutTitle);
     const widthRow = document.createElement('div'); widthRow.className = 'text-width-control';
-    const fullLabel = document.createElement('label'); fullLabel.className = 'check text-width-full'; fullLabel.textContent = 'Full content width';
-    const full = document.createElement('input'); full.type = 'checkbox'; full.checked = stylesDraft.layout.fullContentWidth === true; fullLabel.prepend(full);
-    const enabledLabel = document.createElement('label'); enabledLabel.className = 'check'; enabledLabel.textContent = 'Use pixel Text column width';
-    const enabled = document.createElement('input'); enabled.type = 'checkbox'; enabled.checked = stylesDraft.layout.textColumnWidth !== null; enabledLabel.prepend(enabled);
-    const numberLabel = document.createElement('label'); numberLabel.textContent = 'Text column width, px'; const number = document.createElement('input'); number.type = 'number'; number.min = '480'; number.max = '1000'; number.step = '1'; number.value = stylesDraft.layout.textColumnWidth ?? 720; numberLabel.append(number);
+    const modeLabel=document.createElement('label'); modeLabel.textContent='Text-based blocks width'; const mode=document.createElement('select'); mode.className='text-width-mode'; mode.append(new Option('Custom width','custom'),new Option('Full content width','full'),new Option('Legacy 70ch','legacy')); mode.value=stylesDraft.layout.fullContentWidth?'full':stylesDraft.layout.textColumnWidth===null?'legacy':'custom'; modeLabel.append(mode);
+    const numberLabel = document.createElement('label'); numberLabel.textContent = 'Custom width, px'; const number = document.createElement('input'); number.type = 'number'; number.min = '480'; number.max = '1000'; number.step = '1'; number.value = stylesDraft.layout.textColumnWidth ?? 720; numberLabel.append(number);
     const range = document.createElement('input'); range.type = 'range'; range.min = '480'; range.max = '1000'; range.step = '1'; range.value = number.value; range.setAttribute('aria-label','Text column width slider');
-    const widthReset = button('Reset to legacy 70ch',() => { stylesDraft.layout.textColumnWidth = null; renderStyleControls(); styleChanged(); },widthRow);
-    const setWidthState = () => { enabled.disabled = full.checked; number.disabled = range.disabled = full.checked || !enabled.checked; };
-    const updateWidth = value => { const next = Math.min(1000,Math.max(480,Number(value) || 720)); stylesDraft.layout.textColumnWidth = next; number.value = range.value = String(next); enabled.checked = true; setWidthState(); styleChanged(); };
-    enabled.addEventListener('input',() => { stylesDraft.layout.textColumnWidth = enabled.checked ? Number(number.value) : null; setWidthState(); styleChanged(); });
-    full.addEventListener('input',() => { stylesDraft.layout.fullContentWidth = full.checked; setWidthState(); styleChanged(); });
+    const widthReset = button('Reset to legacy 70ch',() => { stylesDraft.layout.textColumnWidth = null; stylesDraft.layout.fullContentWidth=false; renderStyleControls(); styleChanged(); },widthRow);
+    const setWidthState = () => { number.disabled = range.disabled = mode.value!=='custom'; };
+    const updateWidth = value => { const next = Math.min(1000,Math.max(480,Number(value) || 720)); stylesDraft.layout.textColumnWidth = next; stylesDraft.layout.fullContentWidth=false; mode.value='custom'; number.value = range.value = String(next); setWidthState(); styleChanged(); };
+    mode.addEventListener('input',()=>{stylesDraft.layout.fullContentWidth=mode.value==='full';if(mode.value==='legacy')stylesDraft.layout.textColumnWidth=null;else if(mode.value==='custom'&&stylesDraft.layout.textColumnWidth===null)stylesDraft.layout.textColumnWidth=Number(number.value)||720;setWidthState();styleChanged();});
     number.addEventListener('input',() => updateWidth(number.value)); range.addEventListener('input',() => updateWidth(range.value));
-    const fullReset = button('Reset Full content width',() => { stylesDraft.layout.fullContentWidth = false; renderStyleControls(); styleChanged(); },widthRow);
-    fullReset.className = 'full-width-reset';
-    widthRow.append(fullLabel,enabledLabel,numberLabel,range,widthReset,fullReset); layout.append(widthRow); setWidthState();
+    widthRow.append(modeLabel,numberLabel,range,widthReset); layout.append(widthRow); setWidthState();
     styleInput(layout,stylesDraft.layout,'verticalImageAlignment','Vertical image alignment',{choices:[['top','Top'],['center','Center'],['bottom','Bottom']],defaultValue:DEFAULT_PROJECT_STYLES.layout.verticalImageAlignment});
     styleInput(layout,stylesDraft.layout,'horizontalImageAlignment','Horizontal image alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.horizontalImageAlignment});
     styleInput(layout,stylesDraft.layout,'captionAlignment','Image caption alignment',{choices:[['left','Left'],['center','Center'],['right','Right']],defaultValue:DEFAULT_PROJECT_STYLES.layout.captionAlignment});

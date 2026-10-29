@@ -100,6 +100,11 @@ function validateProject(project) {
         if (typeof block.id !== 'string' || !block.id.trim() || ids.has(block.id)) throw fail('ID блоков должны быть уникальными.');
         ids.add(block.id);
         if (block.enabled !== undefined && typeof block.enabled !== 'boolean') throw fail('Состояние блока enabled должно быть логическим.');
+        if (block.blockWidth !== undefined) {
+            if (!block.blockWidth || typeof block.blockWidth !== 'object' || !['global','custom','full'].includes(block.blockWidth.mode)) throw fail('Некорректный режим ширины блока.');
+            if (block.blockWidth.value !== undefined && (!Number.isFinite(block.blockWidth.value) || block.blockWidth.value < 240 || block.blockWidth.value > 1600)) throw fail('Индивидуальная ширина блока должна быть от 240 до 1600 px.');
+            if (block.blockWidth.mode === 'custom' && !Number.isFinite(block.blockWidth.value)) throw fail('Укажите индивидуальную ширину блока.');
+        }
         stringFields(block, ['text','title','caption','url','provider','videoId','youtubeId','vimeoId','language','lang','size']);
         if (block.richText !== undefined) validateRichText(block.richText);
         if (block.showTitle !== undefined && typeof block.showTitle !== 'boolean') throw fail('Настройка показа названия видео должна быть логической.');
