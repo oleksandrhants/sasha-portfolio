@@ -56,7 +56,7 @@ function validateRichText(value) {
 }
 
 const styleElements = ['title','author','metadata','body','links','listText','imageCaption','photoCredit','videoTitle','videoCaption','materialsHeading','exhibitionsHeading','exhibitionsEntry'];
-const styleFamilies = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif"]);
+const styleFamilies = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif", "Inter, Arial, Helvetica, sans-serif"]);
 function validateProjectStyles(value) {
     if (!value || typeof value !== 'object' || value.version !== 1 || !value.typography || !value.spacing) throw fail('Некорректные Project Styles.');
     for (const key of styleElements) {
@@ -224,7 +224,7 @@ async function createEditorServer({ root = path.resolve(__dirname, '..') } = {})
         while (true) { try { const handle=await fs.open(candidate,'wx'); try { await handle.writeFile(bytes); await handle.sync(); } finally { await handle.close(); } break; } catch(error) { if(error.code !== 'EEXIST') throw error; candidate=path.join(folder,`${parsed.name}-${suffix++}${parsed.ext}`); } }
         const imported=path.relative(root,candidate).split(path.sep).join('/'); await recordImport(imported); return imported;
     }
-    const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.webp':'image/webp', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.avif':'image/avif' };
+    const mime = { '.html':'text/html; charset=utf-8', '.js':'text/javascript; charset=utf-8', '.css':'text/css; charset=utf-8', '.json':'application/json; charset=utf-8', '.woff2':'font/woff2', '.webp':'image/webp', '.jpg':'image/jpeg', '.jpeg':'image/jpeg', '.png':'image/png', '.gif':'image/gif', '.avif':'image/avif' };
     const server = http.createServer(async (req, res) => {
         const send = (status, data) => { res.writeHead(status, { 'Content-Type':'application/json; charset=utf-8' }); res.end(JSON.stringify(data)); };
         res.setHeader('Cache-Control', 'no-store'); res.setHeader('X-Content-Type-Options', 'nosniff');

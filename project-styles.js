@@ -17,7 +17,7 @@ export const DEFAULT_PROJECT_STYLES = {
     layout:{ textColumnWidth:null, fullContentWidth:false, verticalImageAlignment:"top", horizontalImageAlignment:"left", captionAlignment:"left", imageCaptionGap:10, gallerySpacing:{horizontal:16,vertical:16,linked:true} }
 };
 
-const FAMILIES = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif"]);
+const FAMILIES = new Set(["Arial, Helvetica, sans-serif", "Georgia, 'Times New Roman', serif", "'Courier New', Courier, monospace", "system-ui, sans-serif", "Inter, Arial, Helvetica, sans-serif"]);
 const COLOR = /^#[0-9a-f]{6}$/i;
 const clamp = (value, min, max, fallback) => Number.isFinite(Number(value)) ? Math.min(max, Math.max(min, Number(value))) : fallback;
 

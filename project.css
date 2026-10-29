@@ -1,3 +1,17 @@
+@font-face {
+  font-family: "Inter";
+  src: url("assets/fonts/InterVariable.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("assets/fonts/InterVariable-Italic.woff2") format("woff2");
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+}
 * { box-sizing: border-box; }
 body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Helvetica, sans-serif; }
 .project-page { max-width: 1100px; padding: 24px; margin: 0 auto; }

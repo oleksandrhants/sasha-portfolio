@@ -429,7 +429,8 @@ const FONT_CHOICES = [
     ['Arial, Helvetica, sans-serif','Arial / Helvetica'],
     ["Georgia, 'Times New Roman', serif",'Georgia / Times'],
     ["'Courier New', Courier, monospace",'Courier New'],
-    ['system-ui, sans-serif','System UI']
+    ['system-ui, sans-serif','System UI'],
+    ['Inter, Arial, Helvetica, sans-serif','Inter']
 ];
 function styleChanged() { clearTimeout(previewTimer); previewTimer = setTimeout(preview,80); persistStylesDraft(); updateStatus(); }
 function styleInput(parent, object, key, label, options = {}) {
