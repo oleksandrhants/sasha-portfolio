@@ -160,6 +160,22 @@ test('Local editor: security, real Chrome editing, save, restart and restore', {
         assert.deepEqual(modalLayout,{inside:true,noHorizontalOverflow:true,messageBelowTools:true});
     }
     await cdp('Emulation.setDeviceMetricsOverride',{width:1440,height:1000,deviceScaleFactor:1,mobile:false}); await wait('innerWidth === 1440');
+    await evaluate(`(()=>{const dialog=document.querySelector('#image-library');dialog.style.width='900px';dialog.style.height='640px';})()`);
+    await wait(`(()=>{const value=JSON.parse(localStorage.getItem('portfolio-editor-image-library-layout-v1')||'{}');return value.width>=890&&value.height>=630;})()`);
+    const libraryRestoreSize=await evaluate(`(()=>{const box=document.querySelector('#image-library').getBoundingClientRect();return {width:box.width,height:box.height};})()`);
+    await evaluate(`document.querySelector('#image-library [data-maximize]').click()`);
+    assert.equal(await evaluate(`document.querySelector('#image-library').classList.contains('maximized')`),true);
+    assert.equal(await evaluate(`document.querySelector('#image-library [data-maximize]').textContent`),'Restore');
+    assert.ok(await evaluate(`document.querySelector('#image-library').getBoundingClientRect().width>innerWidth-40`));
+    await evaluate(`document.querySelector('#image-library [data-maximize]').click()`);
+    assert.equal(await evaluate(`document.querySelector('#image-library').classList.contains('maximized')`),false);
+    assert.ok(Math.abs((await evaluate(`document.querySelector('#image-library').getBoundingClientRect().width`))-libraryRestoreSize.width)<2);
+    const libraryDivider=await evaluate(`(()=>{const box=document.querySelector('#image-library [data-library-divider]').getBoundingClientRect();return {x:box.x+box.width/2,y:box.y+60};})()`);
+    const librarySplitBefore=await evaluate(`JSON.parse(localStorage.getItem('portfolio-editor-image-library-layout-v1')).split`);
+    await cdp('Input.dispatchMouseEvent',{type:'mousePressed',x:libraryDivider.x,y:libraryDivider.y,button:'left',clickCount:1});
+    await cdp('Input.dispatchMouseEvent',{type:'mouseMoved',x:libraryDivider.x-80,y:libraryDivider.y,button:'left',buttons:1});
+    await cdp('Input.dispatchMouseEvent',{type:'mouseReleased',x:libraryDivider.x-80,y:libraryDivider.y,button:'left',clickCount:1});
+    assert.notEqual(await evaluate(`JSON.parse(localStorage.getItem('portfolio-editor-image-library-layout-v1')).split`),librarySplitBefore);
     await evaluate(`(()=>{const search=document.querySelector('#image-library [data-search]');search.value=${JSON.stringify(longAssetName)};search.dispatchEvent(new Event('input',{bubbles:true}));document.querySelector('#image-library .image-library-item').click();})()`);
     assert.equal(await evaluate(`document.querySelector('#image-library [data-name]').textContent`),longAssetName);
     assert.equal(await evaluate(`document.querySelector('#image-library .image-library-item span').textContent`),longAssetName);
