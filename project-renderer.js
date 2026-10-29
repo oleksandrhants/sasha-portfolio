@@ -179,10 +179,11 @@ function renderMediaGroup(block, project, context, className, maximum)
 {
     const group = context.doc.createElement("div");
     group.className = className;
+    let galleryColumns = 0;
     if (className === "project-gallery")
     {
-        const columns = Number.isInteger(block.columns) && block.columns >= 1 && block.columns <= 3 ? block.columns : 2;
-        group.style.setProperty("--gallery-columns", String(columns));
+        galleryColumns = Number.isInteger(block.columns) && block.columns >= 1 && block.columns <= 3 ? block.columns : 2;
+        group.style.setProperty("--gallery-columns", String(galleryColumns));
         if (block.gallerySpacing?.mode === "custom")
         {
             const horizontal = Number.isFinite(block.gallerySpacing.horizontal) ? Math.min(120, Math.max(0, block.gallerySpacing.horizontal)) : 16;
@@ -200,12 +201,33 @@ function renderMediaGroup(block, project, context, className, maximum)
         }
     }
     const items = Array.isArray(block.items) ? block.items.slice(0, maximum) : [];
-    for (const item of items)
+    if (className === "project-gallery")
     {
-        const figure = item && renderImage(item, project, context);
-        if (figure) group.appendChild(figure);
+        let row = null; let rowItemCount = 0;
+        for (const item of items)
+        {
+            const figure = item && renderImage(item, project, context);
+            if (!figure) continue;
+            if (!row || rowItemCount >= galleryColumns)
+            {
+                row = context.doc.createElement("div");
+                row.className = "project-gallery-row";
+                group.appendChild(row);
+                rowItemCount = 0;
+            }
+            row.appendChild(figure);
+            rowItemCount++;
+        }
     }
-    return group.children.length ? group : null;
+    else
+    {
+        for (const item of items)
+        {
+            const figure = item && renderImage(item, project, context);
+            if (figure) group.appendChild(figure);
+        }
+    }
+    return group.querySelector(".project-image") ? group : null;
 }
 
 function renderLinks(block, project, context)
