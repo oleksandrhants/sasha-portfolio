@@ -88,6 +88,369 @@
           "credit": ""
         }
       ]
+    },
+    {
+      "id": "c09d9cd6-6d85-45ef-ab45-c80b70cba912",
+      "title": "see also: a set of compressed images and feelings",
+      "year": "2023-2024",
+      "author": {
+        "type": "collective",
+        "name": "fantastic little splash"
+      },
+      "projectTypes": [
+        "interactive archive",
+        "installation",
+        "interactive experience",
+        "found photos",
+        "simulation",
+        "essay"
+      ],
+      "roles": [
+        "co-author",
+        "programming",
+        "3D modeling",
+        "texturing",
+        "3D animation",
+        "animation",
+        "music",
+        "co-development of an installation",
+        "artist"
+      ],
+      "content": [
+        {
+          "id": "60677bb1-d294-4420-a961-f2a9d11e6c2c",
+          "type": "text",
+          "text": "‘see also’ is a set of compressed images and feelings, collected during the artistic research of war images by Russia's full-scale invasion of Ukraine. It focuses on burnt-out, compressed, pixelated, and blurred images, and tries to reveal the nature of those artifacts caused by distorted perception systems, the logic of war-time (self)censorship, and the politics of digital platforms.",
+          "language": "en",
+          "richText": {
+            "version": 1,
+            "paragraphs": [
+              {
+                "runs": [
+                  {
+                    "text": "‘see also’"
+                  },
+                  {
+                    "text": " ",
+                    "bold": true
+                  },
+                  {
+                    "text": "is a set of compressed images and feelings, collected during the artistic research of war images by Russia's full-scale invasion of Ukraine. It focuses on burnt-out, compressed, pixelated, and blurred images, and tries to reveal the nature of those artifacts caused by distorted perception systems, the logic of war-time (self)censorship, and the politics of digital platforms."
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "7ddb08ae-375a-41ef-a6cf-5d45127c0bbb",
+          "type": "image",
+          "caption": "каккое-то изобр",
+          "alt": "граффитюлина",
+          "description": "какое-то описание в архиве?",
+          "credit": "автор фотки какой-то тип",
+          "showInArchive": true,
+          "preview": "assets/imported/see also_documentation - frame at 3m0s-preview.webp",
+          "large": "assets/imported/see also_documentation - frame at 3m0s-large.webp",
+          "zoom": "assets/imported/see also_documentation - frame at 3m0s-zoom.jpg"
+        },
+        {
+          "id": "0add2a93-5233-45d4-8b4b-d339280e90bd",
+          "type": "text",
+          "text": "At the same time, focusing on these types of images is an attempt to decompress emotions instrumentalized by cyberwar sensorium. This instrumentalization is caused by the continuing emotional labor of Ukrainians to maintain their/our own collectivity and the permanent \"interest\" in the war among the global community, taking into account the social media community guidelines, ubiquitous orientation on engagement metrics, and opacity of algorithmic policies.\n\n‘see also’ has been developed within the framework of the transmediale x Pro Helvetia residency 2022.",
+          "language": "en"
+        },
+        {
+          "id": "0bfa26e4-c7b0-42f8-94c0-822a7b7aa2a6",
+          "type": "imagePair",
+          "items": [
+            {
+              "id": "d2c10d24-2b51-47ef-8b65-959e6a170b47",
+              "preview": "assets/images/G3D_2.webp",
+              "showInArchive": true,
+              "credit": "тип 2",
+              "caption": "картинка 2 "
+            },
+            {
+              "id": "37dcfa22-6ec2-46cf-b568-4bec41dece05",
+              "preview": "assets/images/gr8_cc.webp",
+              "showInArchive": true,
+              "caption": "картинка 3"
+            }
+          ]
+        },
+        {
+          "id": "3aa098e0-24b1-4ca5-80ce-befd6f40c4d2",
+          "type": "text",
+          "text": "‘see also’ — це набір скомпресовних зображень і почуттів, зібраних протягом художнього дослідження зображень війни Росії проти України. Дослідження фокусується на вигорілих, скомпресовних, пікселізованих і заблурених зображеннях, і намагається розкрити природу цих артефактів, що спричинені зніченими системами сприйняття, логікою воєнної (само)цензури та політиками цифрових платформ.\n\nУ той же час, зосередження на цих типах зображень є спробою декомпресії емоцій, інструменталізованих сенсорикою кібервійни. Ця інструменталізація спричинена безперервною емоційною працею українців задля збереження власної колективності та підтримання постійного «інтересу» до війни серед світової спільноти, із врахуванням правил спільнот у соцмережах, повсюдної орієнтації на метрики залученості та непрозорості алгоритмічних політик.\n\n‘see also’ реалізовано в рамках резиденції transmediale x Pro Helvetia 2022.",
+          "language": "uk"
+        },
+        {
+          "id": "a7b8dda5-5d8b-4c27-90c2-e93b469f710c",
+          "type": "exhibitions",
+          "items": [
+            {
+              "id": "749b5f5e-33a6-479c-84d5-41b40074d02b",
+              "date": "2026",
+              "year": "202666",
+              "title": "How feelings become battlefields",
+              "venue": "Palais de Tokyo",
+              "city": "Paris",
+              "country": "France",
+              "url": "https://palaisdetokyo.com/en/evenement/comment-les-sentiments-deviennent-champs-de-bataille-lart-ukrainien-et-les-infrastructures-emotionnelles-de-la-guerre/",
+              "description": "какооето описаниееее"
+            }
+          ],
+          "title": "спиииисок"
+        },
+        {
+          "id": "6901c6ff-c406-4142-bfaf-b335cc52a30b",
+          "type": "gallery",
+          "items": [
+            {
+              "id": "3f942520-7e72-4321-b348-ca7cdd6d2bcf",
+              "preview": "assets/images/ZGrab02.webp"
+            },
+            {
+              "id": "9f08608a-9a79-4c29-8fa8-cff374daacac",
+              "preview": "assets/images/st2.webp"
+            },
+            {
+              "id": "ac0b5520-87ed-4788-b2c9-dd45ff2e3ca4",
+              "preview": "assets/images/gr_233.webp"
+            },
+            {
+              "id": "80b2c6b2-26f1-4914-8c2d-fdc9ec282cc6",
+              "preview": "assets/images/gr_1.webp"
+            }
+          ],
+          "columns": 3,
+          "gap": 6
+        },
+        {
+          "id": "f992d360-9180-4d9f-bfd7-4d4c33300d8f",
+          "type": "video",
+          "provider": "youtube",
+          "url": "https://www.youtube.com/watch?v=PgPmZrB14Xk",
+          "title": "видосик",
+          "caption": "кукук",
+          "showTitle": false
+        },
+        {
+          "id": "0d34697d-6123-492c-90ee-ec3157049ebe",
+          "type": "links",
+          "items": [
+            {
+              "id": "db2b22aa-7f58-45d9-bab7-e609576ac0ce",
+              "title": "1линк на палац",
+              "url": "https://palaisdetokyo.com/en/evenement/comment-les-sentiments-deviennent-champs-de-bataille-lart-ukrainien-et-les-infrastructures-emotionnelles-de-la-guerre/",
+              "description": "тестик"
+            },
+            {
+              "id": "f0f5a3fe-58c4-40a9-810f-30b78480474f",
+              "title": "линк2222",
+              "url": "https://palaisdetokyo.com/en/evenement/comment-les-sentiments-deviennent-champs-de-bataille-lart-ukrainien-et-les-infrastructures-emotionnelles-de-la-guerre/",
+              "description": "ещё"
+            }
+          ],
+          "title": "линклинклинк"
+        },
+        {
+          "id": "bcd35704-da1c-4be7-bd65-07c6404307fc",
+          "type": "spacer",
+          "size": "medium"
+        }
+      ]
+    },
+    {
+      "id": "b3468985-907c-4125-a565-73b725fa0146",
+      "title": "A Love Letter To Graffiti",
+      "year": "2024",
+      "author": {
+        "type": "solo",
+        "name": "Oleksandr Hants"
+      },
+      "projectTypes": [],
+      "roles": [
+        "artist",
+        "programming",
+        "3D modeling",
+        "texturing",
+        "music"
+      ],
+      "content": [
+        {
+          "id": "83d16c19-2314-41f9-8f9f-285ad7daf117",
+          "type": "image",
+          "preview": "assets/imported/05_Love_Letter_To_Graffi_Main_v8_FullHD_Versiom.00_02_05_22.Still007-preview.webp",
+          "large": "assets/imported/05_Love_Letter_To_Graffi_Main_v8_FullHD_Versiom.00_02_05_22.Still007-large.webp"
+        },
+        {
+          "id": "4e704e2c-908c-4c17-8803-b5daeacff68e",
+          "type": "text",
+          "text": "A Love Letter to Graffiti is an art game that draws inspiration from graffiti’s core elements, translating them into a digital, participatory experience. The project translates the artist’s creative process into a minimal form in which spontaneous ideas evolve and form unexpected connections.\nIn this simplified simulation, audiences actively engage with shifting visual dynamics, navigating an abstract and meditative journey that reflects graffiti’s characteristic features: spontaneity, abstraction, ephemerality, and temporality. By translating graffiti’s fleeting nature into an interactive format, the project explores how creative expression exists in a constant state of change, shaped by both individual action and uncontrolled influences. \nA Love Letter to Graffiti explores the boundaries between creation and observation, play and artistic expression, taking control and letting go.\nVideo documentation from Ateliers ouverts | Les rencontres de Montmartre, Cité internationale des arts, Paris, France, 2024",
+          "richText": {
+            "version": 1,
+            "paragraphs": [
+              {
+                "runs": [
+                  {
+                    "text": "A Love Letter to Graffiti",
+                    "italic": true
+                  },
+                  {
+                    "text": " is an art game that draws inspiration from graffiti’s core elements, translating them into a digital, participatory experience. The project translates the artist’s creative process into a minimal form in which spontaneous ideas evolve and form unexpected connections."
+                  }
+                ]
+              },
+              {
+                "runs": [
+                  {
+                    "text": "In this simplified simulation, audiences actively engage with shifting visual dynamics, navigating an abstract and meditative journey that reflects graffiti’s characteristic features: spontaneity, abstraction, ephemerality, and temporality. By translating graffiti’s fleeting nature into an interactive format, the project explores how creative expression exists in a constant state of change, shaped by both individual action and uncontrolled influences. "
+                  }
+                ]
+              },
+              {
+                "runs": [
+                  {
+                    "text": "A Love Letter to Graffiti explores the boundaries between creation and observation, play and artistic expression, taking control and letting go."
+                  }
+                ]
+              },
+              {
+                "runs": [
+                  {
+                    "text": "Video documentation from Ateliers ouverts | Les rencontres de Montmartre, Cité internationale des arts, Paris, France, 2024"
+                  }
+                ]
+              }
+            ]
+          },
+          "language": "en"
+        },
+        {
+          "id": "52f3113d-bcc9-419c-9f96-cf7df3ed1d80",
+          "type": "video",
+          "provider": "youtube",
+          "url": "https://youtu.be/-RrSJzEVs5Q?si=AhIUNFyZlL3ck1YY",
+          "title": "Video documentation from Ateliers ouverts | Les rencontres de Montmartre, Cité internationale des arts, Paris, France, 2024",
+          "showTitle": false,
+          "caption": "Video documentation from Ateliers ouverts | Les rencontres de Montmartre, Cité internationale des arts, Paris, France, 2024"
+        },
+        {
+          "id": "89b53aa4-0fd7-43b6-b2fc-97d890d7289f",
+          "type": "image",
+          "preview": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_186-preview.webp",
+          "large": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_186-large.webp",
+          "enabled": false
+        },
+        {
+          "id": "2383009c-2ed9-40c4-93a8-8b44ec85c932",
+          "type": "text",
+          "text": "Моє зізнання графіті — це гра натхненна  основними елементами графіті, що перетворює їх на цифровий інтерактивний досвід. Проєкт передає творчий процес художника у мінімалістичний формі, в якій спонтанні ідеї розвиваються та створюють несподівані зв’язки.\nУ цій спрощеній симуляції глядачі можуть взаємодіяти зі змінною візуальною динамікою, що відображає характерні риси графіті: спонтанність, абстракцію, ефемерність і тимчасовість. Перетворюючи мінливу природу графіті на інтерактивний формат, проєкт досліджує, як творче вираження існує у постійному стані змін, формуючись як під впливом індивідуальних дій, так і під впливом неконтрольованих факторів.\nМоє зізнання графіті досліджує межі між створенням і спостереженням, грою та мистецьким враженням, контролем і відпусканням.\n\n",
+          "language": "uk",
+          "richText": {
+            "version": 1,
+            "paragraphs": [
+              {
+                "runs": [
+                  {
+                    "text": "Моє зізнання графіті",
+                    "italic": true
+                  },
+                  {
+                    "text": " — це гра натхненна  основними елементами графіті, що перетворює їх на цифровий інтерактивний досвід. Проєкт передає творчий процес художника у мінімалістичний формі, в якій спонтанні ідеї розвиваються та створюють несподівані зв’язки."
+                  }
+                ]
+              },
+              {
+                "runs": [
+                  {
+                    "text": "У цій спрощеній симуляції глядачі можуть взаємодіяти зі змінною візуальною динамікою, що відображає характерні риси графіті: спонтанність, абстракцію, ефемерність і тимчасовість. Перетворюючи мінливу природу графіті на інтерактивний формат, проєкт досліджує, як творче вираження існує у постійному стані змін, формуючись як під впливом індивідуальних дій, так і під впливом неконтрольованих факторів."
+                  }
+                ]
+              },
+              {
+                "runs": [
+                  {
+                    "text": "Моє зізнання графіті досліджує межі між створенням і спостереженням, грою та мистецьким враженням, контролем і відпусканням."
+                  }
+                ]
+              },
+              {
+                "runs": [
+                  {
+                    "text": "\n"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "id": "e64de4a8-e745-45b0-a42f-3c8c7c455417",
+          "type": "image",
+          "preview": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_165-preview.webp",
+          "large": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_165-large.webp"
+        },
+        {
+          "id": "7d4cbc35-400c-4294-b6bc-ed5796ebe9ae",
+          "type": "gallery",
+          "items": [
+            {
+              "id": "e2a7effb-6a68-43c8-b42b-db81ac23a847",
+              "preview": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_522-preview.webp",
+              "large": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_522-large.webp"
+            },
+            {
+              "id": "91930254-ef57-4359-a9b9-f0cc15eab0f2",
+              "preview": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_226-preview.webp",
+              "large": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_226-large.webp"
+            },
+            {
+              "id": "f3f44f60-d665-4627-8b3a-47aaaecd172b",
+              "preview": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_293-preview.webp",
+              "large": "assets/imported/A_Love_Letter_To_Graffiti_Gameplay_Screen_Rec_v1_293-large.webp"
+            },
+            {
+              "id": "efbfce7e-8faa-4195-ad12-8c28f2ab2fcf",
+              "large": "assets/imported/_DSC7143-large.webp"
+            }
+          ],
+          "gallerySpacing": {
+            "mode": "global",
+            "horizontal": 16,
+            "vertical": 8,
+            "linked": false
+          }
+        },
+        {
+          "id": "117bec41-3d73-492b-b7d8-9586665ebbde",
+          "type": "exhibitions",
+          "items": [
+            {
+              "id": "a11f681e-babc-4fe9-8576-21fd8f477cfb",
+              "date": "",
+              "year": "2025",
+              "title": "Contours of Recovery: Interspace",
+              "venue": "Poltava Regional Universal Scientific Library named after Ivan Kotliarevsky",
+              "city": "Poltava",
+              "country": "Ukraine",
+              "url": "https://digitalfestpoltava.com/kontury-vidnovlennya-2025.html"
+            },
+            {
+              "id": "cc57654f-0a11-4e4d-b626-6589131ead00",
+              "year": "2024",
+              "title": "Ateliers ouverts / Les Rencontres de Montmartre",
+              "venue": "Cité  internationale des arts",
+              "city": "Paris",
+              "country": "France",
+              "url": "https://www.citeinternationaledesarts.fr/evenements/ateliers-ouverts-les-rencontres-de-montmartre-ete-2024/"
+            }
+          ],
+          "title": "Exhibitions"
+        }
+      ]
     }
   ]
 }
