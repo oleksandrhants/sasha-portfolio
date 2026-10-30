@@ -15,10 +15,12 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Helvetica, sans-serif; }
 .project-page { max-width: 1100px; padding: 24px; margin: 0 auto; }
+#project-metadata, #project-content { font-synthesis: none; }
 #project-metadata .project-author { margin: 0 0 4px; text-transform: none; font-family: var(--project-author-family, Arial, Helvetica, sans-serif); font-size: var(--project-author-size, 18px); font-weight: var(--project-author-weight, 400); font-style: var(--project-author-style, normal); color: var(--project-author-color, #252525); }
 #project-metadata .project-title { line-height: 1.2; margin: 0 0 12px; text-transform: none; font-family: var(--project-title-family, Arial, Helvetica, sans-serif); font-size: var(--project-title-size, 28px); font-weight: var(--project-title-weight, 400); font-style: var(--project-title-style, normal); color: var(--project-title-color, #252525); }
 #project-metadata p { margin: 4px 0; font-family: var(--project-metadata-family, Arial, Helvetica, sans-serif); font-size: var(--project-metadata-size, 13px); font-weight: var(--project-metadata-weight, 400); font-style: var(--project-metadata-style, normal); color: var(--project-metadata-color, #252525); }
-#project-content { display: grid; gap: var(--project-block-gap, 32px); margin-top: var(--project-header-gap, 32px); }
+#project-content { display: grid; gap: 0; margin-top: var(--project-header-gap, 32px); }
+#project-content > .project-block + .project-block { margin-block-start: var(--project-block-before-gap, var(--project-block-gap, 32px)); }
 .project-text { margin: 0; }
 .project-text-based-block { width: 100%; max-width: min(100%, var(--project-block-text-width, var(--project-text-column-width, 70ch))); }
 .project-text p { margin: 0 0 var(--project-paragraph-gap, 15px); white-space: pre-wrap; font-family: var(--project-body-family, Arial, Helvetica, sans-serif); font-size: var(--project-body-size, 15px); font-weight: var(--project-body-weight, 400); font-style: var(--project-body-style, normal); line-height: var(--project-body-line-height, 1.6); color: var(--project-body-color, #252525); }

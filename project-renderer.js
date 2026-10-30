@@ -4,6 +4,7 @@ import { renderRichText } from "./rich-text.js";
 const VALID_LANGUAGES = new Set(["en", "uk"]);
 const VALID_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 const TEXT_BLOCK_TYPES = new Set(["text", "links", "materials", "exhibitions"]);
+const MEDIA_BLOCK_TYPES = new Set(["image", "imagePair", "image-pair", "gallery"]);
 
 function textValue(value)
 {
@@ -26,6 +27,32 @@ function safeExternalUrl(value)
         return VALID_URL_PROTOCOLS.has(url.protocol) ? url.href : "";
     }
     catch { return ""; }
+}
+
+function clampedGalleryGap(value, fallback = 16)
+{
+    return Number.isFinite(value) ? Math.min(120, Math.max(0, value)) : fallback;
+}
+
+function effectiveGalleryVerticalGap(block)
+{
+    if (block?.type !== "gallery") return "";
+    if (block.gallerySpacing?.mode === "custom")
+    {
+        const horizontal = clampedGalleryGap(block.gallerySpacing.horizontal);
+        const verticalSource = block.gallerySpacing.linked === true ? horizontal : block.gallerySpacing.vertical;
+        return `${clampedGalleryGap(verticalSource, horizontal)}px`;
+    }
+    if (Number.isFinite(block.gap)) return `${clampedGalleryGap(block.gap)}px`;
+    return "var(--project-gallery-vertical-gap, 16px)";
+}
+
+function adjacentMediaGap(previous, next)
+{
+    if (!MEDIA_BLOCK_TYPES.has(previous?.type) || !MEDIA_BLOCK_TYPES.has(next?.type)) return "";
+    return effectiveGalleryVerticalGap(next)
+        || effectiveGalleryVerticalGap(previous)
+        || "var(--project-gallery-vertical-gap, 16px)";
 }
 
 function addCaption(figure, caption, doc)
@@ -414,6 +441,7 @@ export function renderProject(project, options)
         doc.title = `${project.title || "Untitled project"} — Oleksandr Hants`;
     renderMetadata(project, metadata, doc);
     content.replaceChildren();
+    const renderedBlocks = [];
     for (const block of Array.isArray(project.content) ? project.content : [])
     {
         if (!block || typeof block !== "object" || block.enabled === false || !Object.hasOwn(blockRenderers, block.type)) continue;
@@ -429,6 +457,12 @@ export function renderProject(project, options)
         if (typeof block.id === "string" && block.id.trim()) element.dataset.blockId = block.id.trim();
         setLanguage(element, block.language || block.lang);
         content.appendChild(element);
+        renderedBlocks.push({ block, element });
+    }
+    for (let index = 1; index < renderedBlocks.length; index++)
+    {
+        const gap = adjacentMediaGap(renderedBlocks[index - 1].block, renderedBlocks[index].block);
+        if (gap) renderedBlocks[index].element.style.setProperty("--project-block-before-gap", gap);
     }
 }
 
