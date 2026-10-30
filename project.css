@@ -15,7 +15,7 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: #eeeeec; color: #252525; font: 15px/1.6 Arial, Helvetica, sans-serif; }
 .project-page { max-width: 1100px; padding: 24px; margin: 0 auto; }
-#project-metadata, #project-content { font-synthesis: none; }
+#project-metadata, #project-content { font-synthesis: none; font-optical-sizing: none; }
 #project-metadata .project-author { margin: 0 0 4px; text-transform: none; font-family: var(--project-author-family, Arial, Helvetica, sans-serif); font-size: var(--project-author-size, 18px); font-weight: var(--project-author-weight, 400); font-style: var(--project-author-style, normal); color: var(--project-author-color, #252525); }
 #project-metadata .project-title { line-height: 1.2; margin: 0 0 12px; text-transform: none; font-family: var(--project-title-family, Arial, Helvetica, sans-serif); font-size: var(--project-title-size, 28px); font-weight: var(--project-title-weight, 400); font-style: var(--project-title-style, normal); color: var(--project-title-color, #252525); }
 #project-metadata p { margin: 4px 0; font-family: var(--project-metadata-family, Arial, Helvetica, sans-serif); font-size: var(--project-metadata-size, 13px); font-weight: var(--project-metadata-weight, 400); font-style: var(--project-metadata-style, normal); color: var(--project-metadata-color, #252525); }
